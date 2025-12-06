@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #6366f1;
+  --color-primary-light: #818cf8;
+  --color-primary-dark: #4f46e5;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #fafafa 0%, #f0f4ff 100%);
+  min-height: 100vh;
+  color: #1a1a2e;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4d4d4;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a3a3a3;
+}
+
+/* 卡片样式 */
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-soft p-6 transition-all duration-300;
+  }
+
+  .card:hover {
+    @apply shadow-lg;
+  }
+
+  .btn {
+    @apply px-4 py-2 rounded-xl font-medium transition-all duration-200 inline-flex items-center justify-center gap-2;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:from-primary-600 hover:to-primary-700 shadow-md hover:shadow-lg;
+  }
+
+  .btn-secondary {
+    @apply bg-surface-100 text-gray-700 hover:bg-surface-200;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-gray-600 hover:bg-surface-100;
+  }
+
+  .input {
+    @apply w-full px-4 py-3 rounded-xl border border-surface-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all duration-200;
+  }
+
+  .badge {
+    @apply px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-success {
+    @apply bg-green-100 text-green-700;
+  }
+
+  .badge-warning {
+    @apply bg-yellow-100 text-yellow-700;
+  }
+
+  .badge-danger {
+    @apply bg-red-100 text-red-700;
+  }
+
+  .badge-info {
+    @apply bg-blue-100 text-blue-700;
+  }
+
+  /* 马卡龙风格卡片 */
+  .macaron-card {
+    @apply rounded-2xl p-6 transition-all duration-300;
+  }
+
+  .macaron-pink {
+    background: linear-gradient(135deg, #FFB5BA 0%, #FFCBA4 100%);
+  }
+
+  .macaron-mint {
+    background: linear-gradient(135deg, #B8E0D2 0%, #A8D8EA 100%);
+  }
+
+  .macaron-lavender {
+    background: linear-gradient(135deg, #D5AAFF 0%, #A8D8EA 100%);
+  }
+
+  .macaron-yellow {
+    background: linear-gradient(135deg, #FFE5A0 0%, #FFCBA4 100%);
+  }
+}
+
+/* 动画 */
+.page-enter-active,
+.page-leave-active {
+  transition: all 0.3s ease;
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* 渐变文字 */
+.gradient-text {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

@@ -1,0 +1,36 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+xboard
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Config with secrets
+configs/config.yaml
+
+# Logs
+*.log
+logs/
+
+# Cache
+cache.json
+
+# OS
+.DS_Store
+Thumbs.db

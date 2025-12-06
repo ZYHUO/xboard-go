@@ -1,0 +1,118 @@
+{
+  "log": {
+    "level": "info",
+    "timestamp": true
+  },
+  "inbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "ss-in",
+      "listen": "::",
+      "listen_port": 8388,
+      "method": "2022-blake3-aes-128-gcm",
+      "password": "YOUR_SERVER_KEY_HERE",
+      "multiplex": {
+        "enabled": true
+      }
+    },
+    {
+      "type": "vmess",
+      "tag": "vmess-in",
+      "listen": "::",
+      "listen_port": 10086,
+      "users": [],
+      "transport": {
+        "type": "ws",
+        "path": "/vmess"
+      }
+    },
+    {
+      "type": "vless",
+      "tag": "vless-in",
+      "listen": "::",
+      "listen_port": 443,
+      "users": [],
+      "tls": {
+        "enabled": true,
+        "server_name": "example.com",
+        "certificate_path": "/path/to/cert.pem",
+        "key_path": "/path/to/key.pem"
+      }
+    },
+    {
+      "type": "trojan",
+      "tag": "trojan-in",
+      "listen": "::",
+      "listen_port": 8443,
+      "users": [],
+      "tls": {
+        "enabled": true,
+        "server_name": "example.com",
+        "certificate_path": "/path/to/cert.pem",
+        "key_path": "/path/to/key.pem"
+      }
+    },
+    {
+      "type": "hysteria2",
+      "tag": "hy2-in",
+      "listen": "::",
+      "listen_port": 8443,
+      "users": [],
+      "tls": {
+        "enabled": true,
+        "server_name": "example.com",
+        "certificate_path": "/path/to/cert.pem",
+        "key_path": "/path/to/key.pem"
+      }
+    },
+    {
+      "type": "anytls",
+      "tag": "anytls-in",
+      "listen": "::",
+      "listen_port": 9443,
+      "users": [],
+      "tls": {
+        "enabled": true,
+        "server_name": "example.com",
+        "certificate_path": "/path/to/cert.pem",
+        "key_path": "/path/to/key.pem"
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "block",
+      "tag": "block"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "geoip": ["private"],
+        "outbound": "block"
+      }
+    ],
+    "final": "direct"
+  },
+  "services": [
+    {
+      "type": "ssmapi",
+      "tag": "ssmapi",
+      "listen": "::",
+      "listen_port": 9000,
+      "servers": {
+        "/shadowsocks": "ss-in",
+        "/vmess": "vmess-in",
+        "/vless": "vless-in",
+        "/trojan": "trojan-in",
+        "/hysteria2": "hy2-in",
+        "/anytls": "anytls-in"
+      },
+      "cache_path": "/var/lib/sing-box/ssmapi.cache"
+    }
+  ]
+}

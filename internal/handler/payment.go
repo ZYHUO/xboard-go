@@ -1,0 +1,281 @@
+package handler
+
+import (
+	"net/http"
+
+	"xboard/internal/service"
+
+	"github.com/gin-gonic/gin"
+)
+
+// GetPaymentMethods 获取支付方式列表
+func GetPaymentMethods(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		payments, err := services.Payment.GetEnabledPayments()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		result := make([]map[string]interface{}, 0, len(payments))
+		for _, p := range payments {
+			result = append(result, map[string]interface{}{
+				"id":   p.ID,
+				"name": p.Name,
+				"icon": p.Icon,
+			})
+		}
+
+		c.JSON(http.StatusOK, gin.H{"data": result})
+	}
+}
+
+// CreatePayment 创建支付
+func CreatePayment(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			TradeNo   string `json:"trade_no" binding:"required"`
+			PaymentID int64  `json:"payment_id" binding:"required"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		result, err := services.Payment.CreatePayment(req.TradeNo, req.PaymentID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"data": result})
+	}
+}
+
+// PaymentNotify 支付回调
+func PaymentNotify(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		paymentUUID := c.Param("uuid")
+
+		// 获取所有参数
+		params := make(map[string]string)
+
+		// GET 参数
+		for k, v := range c.Request.URL.Query() {
+			if len(v) > 0 {
+				params[k] = v[0]
+			}
+		}
+
+		// POST 参数
+		c.Request.ParseForm()
+		for k, v := range c.Request.PostForm {
+			if len(v) > 0 {
+				params[k] = v[0]
+			}
+		}
+
+		if err := services.Payment.HandleCallback(paymentUUID, params); err != nil {
+			c.String(http.StatusBadRequest, "fail")
+			return
+		}
+
+		c.String(http.StatusOK, "success")
+	}
+}
+
+// CheckPaymentStatus 检查支付状态
+func CheckPaymentStatus(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tradeNo := c.Query("trade_no")
+		if tradeNo == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "trade_no required"})
+			return
+		}
+
+		paid, err := services.Payment.CheckPaymentStatus(tradeNo)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"data": gin.H{"paid": paid}})
+	}
+}
+
+// CheckCoupon 检查优惠券
+func CheckCoupon(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user := getUserFromContext(c)
+		if user == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		var req struct {
+			Code   string `json:"code" binding:"required"`
+			PlanID int64  `json:"plan_id" binding:"required"`
+			Period string `json:"period" binding:"required"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		coupon, discount, err := services.Coupon.CheckCoupon(req.Code, req.PlanID, req.Period, user.ID)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": gin.H{
+				"id":       coupon.ID,
+				"name":     coupon.Name,
+				"type":     coupon.Type,
+				"value":    coupon.Value,
+				"discount": discount,
+			},
+		})
+	}
+}
+
+// GetNotices 获取公告列表
+func GetNotices(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		notices, err := services.Notice.GetVisible()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"data": notices})
+	}
+}
+
+// GetKnowledge 获取知识库
+func GetKnowledge(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		language := c.DefaultQuery("language", "zh-CN")
+		category := c.Query("category")
+
+		var items interface{}
+		var err error
+
+		if category != "" {
+			items, err = services.Knowledge.GetByCategory(category, language)
+		} else {
+			items, err = services.Knowledge.GetVisible(language)
+		}
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"data": items})
+	}
+}
+
+// GetKnowledgeCategories 获取知识库分类
+func GetKnowledgeCategories(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		language := c.DefaultQuery("language", "zh-CN")
+
+		categories, err := services.Knowledge.GetCategories(language)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"data": categories})
+	}
+}
+
+// GetInviteInfo 获取邀请信息
+func GetInviteInfo(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user := getUserFromContext(c)
+		if user == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		// 获取邀请码
+		codes, _ := services.Invite.GetUserInviteCodes(user.ID)
+
+		// 获取统计
+		stats, _ := services.Invite.GetInviteStats(user.ID)
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": gin.H{
+				"codes": codes,
+				"stats": stats,
+			},
+		})
+	}
+}
+
+// GenerateInviteCode 生成邀请码
+func GenerateInviteCode(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user := getUserFromContext(c)
+		if user == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		code, err := services.Invite.GenerateInviteCode(user.ID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"data": code})
+	}
+}
+
+// GetCommissionLogs 获取佣金记录
+func GetCommissionLogs(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user := getUserFromContext(c)
+		if user == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		page := 1
+		pageSize := 20
+
+		logs, total, err := services.Invite.GetCommissionLogs(user.ID, page, pageSize)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data":  logs,
+			"total": total,
+		})
+	}
+}
+
+// WithdrawCommission 提现佣金
+func WithdrawCommission(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user := getUserFromContext(c)
+		if user == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+
+		if err := services.Invite.WithdrawCommission(user.ID, user.CommissionBalance); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"data": true})
+	}
+}

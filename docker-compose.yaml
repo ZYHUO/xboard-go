@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  xboard:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./configs:/app/configs
+    depends_on:
+      - mysql
+      - redis
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: xboard_password
+      MYSQL_DATABASE: xboard
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  # sing-box 节点示例
+  singbox-node:
+    image: ghcr.io/sagernet/sing-box:latest
+    volumes:
+      - ./configs/singbox-server.json:/etc/sing-box/config.json
+    ports:
+      - "8388:8388"      # Shadowsocks
+      - "10086:10086"    # VMess
+      - "443:443"        # Trojan/VLESS
+      - "9000:9000"      # SSMAPI
+    restart: unless-stopped
+    command: ["run", "-c", "/etc/sing-box/config.json"]
+
+volumes:
+  mysql_data:
+  redis_data:

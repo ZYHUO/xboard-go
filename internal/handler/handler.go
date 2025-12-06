@@ -1,0 +1,196 @@
+package handler
+
+import (
+	"xboard/internal/config"
+	"xboard/internal/middleware"
+	"xboard/internal/service"
+
+	"github.com/gin-gonic/gin"
+)
+
+func RegisterRoutes(r *gin.Engine, services *service.Services, cfg *config.Config) {
+	// 公共中间件
+	r.Use(gin.Recovery())
+	r.Use(middleware.CORS())
+
+	// API v1
+	v1 := r.Group("/api/v1")
+	{
+		// Guest routes (无需认证)
+		guest := v1.Group("/guest")
+		{
+			guest.POST("/register", GuestRegister(services))
+			guest.POST("/login", GuestLogin(services))
+			guest.GET("/plans", GuestGetPlans(services))
+		}
+
+		// Passport routes (认证相关)
+		passport := v1.Group("/passport")
+		{
+			passport.POST("/auth/login", PassportLogin(services))
+			passport.POST("/auth/register", PassportRegister(services))
+		}
+
+		// User routes (需要用户认证)
+		user := v1.Group("/user")
+		user.Use(middleware.JWTAuth(services.Auth))
+		{
+			user.GET("/info", UserInfo(services))
+			user.GET("/subscribe", UserSubscribe(services))
+			user.POST("/reset_token", UserResetToken(services))
+			user.POST("/reset_uuid", UserResetUUID(services))
+			user.POST("/change_password", UserChangePassword(services))
+			user.GET("/orders", UserOrders(services))
+			user.POST("/order/create", UserCreateOrder(services))
+			user.POST("/order/cancel", UserCancelOrder(services))
+
+			// Ticket routes
+			user.GET("/tickets", UserTickets(services))
+			user.GET("/ticket/:id", UserTicketDetail(services))
+			user.POST("/ticket/create", UserCreateTicket(services))
+			user.POST("/ticket/:id/reply", UserReplyTicket(services))
+			user.POST("/ticket/:id/close", UserCloseTicket(services))
+
+			// Payment routes
+			user.POST("/order/pay", CreatePayment(services))
+			user.GET("/order/check", CheckPaymentStatus(services))
+			user.POST("/coupon/check", CheckCoupon(services))
+
+			// Invite routes
+			user.GET("/invite", GetInviteInfo(services))
+			user.POST("/invite/generate", GenerateInviteCode(services))
+			user.GET("/invite/commission", GetCommissionLogs(services))
+			user.POST("/invite/withdraw", WithdrawCommission(services))
+		}
+
+		// Client routes (订阅获取)
+		client := v1.Group("/client")
+		{
+			client.GET("/subscribe", ClientSubscribe(services))
+		}
+
+		// Payment routes
+		payment := v1.Group("/payment")
+		{
+			payment.GET("/methods", GetPaymentMethods(services))
+			payment.POST("/notify/:uuid", PaymentNotify(services))
+		}
+
+		// Public routes
+		v1.GET("/notices", GetNotices(services))
+		v1.GET("/knowledge", GetKnowledge(services))
+		v1.GET("/knowledge/categories", GetKnowledgeCategories(services))
+
+		// Agent routes (主机对接)
+		agent := v1.Group("/agent")
+		agent.Use(AgentAuth(services))
+		{
+			agent.POST("/heartbeat", AgentHeartbeat(services))
+			agent.GET("/config", AgentGetConfig(services))
+			agent.POST("/traffic", AgentReportTraffic(services))
+		}
+
+		// Server routes (节点通信)
+		server := v1.Group("/server")
+		server.Use(middleware.NodeAuth(cfg.Node.Token))
+		server.Use(SetServerContext(services))
+		{
+			// UniProxy 兼容接口
+			uniProxy := server.Group("/UniProxy")
+			{
+				uniProxy.GET("/config", ServerConfig(services))
+				uniProxy.GET("/user", ServerUsers(services))
+				uniProxy.POST("/push", ServerPush(services))
+				uniProxy.POST("/alive", ServerAlive(services))
+				uniProxy.GET("/alivelist", ServerAliveList(services))
+				uniProxy.POST("/status", ServerStatus(services))
+			}
+		}
+	}
+
+	// API v2 (Admin)
+	v2 := r.Group("/api/v2")
+	{
+		admin := v2.Group("/admin")
+		admin.Use(middleware.JWTAuth(services.Auth))
+		admin.Use(middleware.AdminAuth())
+		{
+			// Server management
+			admin.GET("/servers", AdminListServers(services))
+			admin.POST("/server", AdminCreateServer(services))
+			admin.PUT("/server/:id", AdminUpdateServer(services))
+			admin.DELETE("/server/:id", AdminDeleteServer(services))
+			admin.GET("/server/:id/status", AdminGetServerStatus(services))
+			admin.POST("/server/:id/sync", AdminSyncServerUsers(services))
+
+			// User management
+			admin.GET("/users", AdminListUsers(services))
+			admin.GET("/user/:id", AdminGetUser(services))
+			admin.PUT("/user/:id", AdminUpdateUser(services))
+
+			// Plan management
+			admin.GET("/plans", AdminListPlans(services))
+			admin.POST("/plan", AdminCreatePlan(services))
+			admin.PUT("/plan/:id", AdminUpdatePlan(services))
+			admin.DELETE("/plan/:id", AdminDeletePlan(services))
+
+			// Order management
+			admin.GET("/orders", AdminListOrders(services))
+
+			// Settings
+			admin.GET("/settings", AdminGetSettings(services))
+			admin.POST("/settings", AdminUpdateSettings(services))
+
+			// Ticket management
+			admin.GET("/tickets", AdminListTickets(services))
+			admin.GET("/ticket/:id", AdminTicketDetail(services))
+			admin.POST("/ticket/:id/reply", AdminReplyTicket(services))
+			admin.POST("/ticket/:id/close", AdminCloseTicket(services))
+
+			// Statistics
+			admin.GET("/stats/overview", AdminStatsOverview(services))
+			admin.GET("/stats/order", AdminOrderStats(services))
+			admin.GET("/stats/user", AdminUserStats(services))
+			admin.GET("/stats/traffic", AdminTrafficStats(services))
+			admin.GET("/stats/server_ranking", AdminServerRanking(services))
+			admin.GET("/stats/user_ranking", AdminUserRanking(services))
+
+			// Notice management
+			admin.GET("/notices", AdminListNotices(services))
+			admin.POST("/notice", AdminCreateNotice(services))
+			admin.PUT("/notice/:id", AdminUpdateNotice(services))
+			admin.DELETE("/notice/:id", AdminDeleteNotice(services))
+
+			// Knowledge management
+			admin.GET("/knowledge", AdminListKnowledge(services))
+			admin.POST("/knowledge", AdminCreateKnowledge(services))
+			admin.PUT("/knowledge/:id", AdminUpdateKnowledge(services))
+			admin.DELETE("/knowledge/:id", AdminDeleteKnowledge(services))
+
+			// Coupon management
+			admin.GET("/coupons", AdminListCoupons(services))
+			admin.POST("/coupon", AdminCreateCoupon(services))
+			admin.PUT("/coupon/:id", AdminUpdateCoupon(services))
+			admin.DELETE("/coupon/:id", AdminDeleteCoupon(services))
+
+			// Payment management
+			admin.GET("/payments", AdminListPayments(services))
+			admin.POST("/payment", AdminCreatePayment(services))
+			admin.PUT("/payment/:id", AdminUpdatePayment(services))
+
+			// Host management (主机管理)
+			admin.GET("/hosts", AdminListHosts(services))
+			admin.POST("/host", AdminCreateHost(services))
+			admin.DELETE("/host/:id", AdminDeleteHost(services))
+			admin.POST("/host/:id/reset_token", AdminResetHostToken(services))
+			admin.GET("/host/:id/config", AdminGetHostConfig(services))
+
+			// Node management (节点管理)
+			admin.GET("/nodes", AdminListNodes(services))
+			admin.POST("/node", AdminCreateNode(services))
+			admin.PUT("/node/:id", AdminUpdateNode(services))
+			admin.DELETE("/node/:id", AdminDeleteNode(services))
+			admin.GET("/node/default", AdminGetDefaultNodeConfig(services))
+		}
+	}
+}

@@ -1,0 +1,43 @@
+# XBoard Go Configuration Example
+# Copy this file to config.yaml and modify as needed
+
+app:
+  name: "XBoard"
+  mode: "debug"  # debug, release
+  listen: ":8080"
+
+database:
+  driver: "mysql"  # mysql, sqlite
+  host: "127.0.0.1"
+  port: 3306
+  database: "xboard"
+  username: "root"
+  password: "your_password"
+
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  password: ""
+  db: 0
+
+jwt:
+  secret: "change-this-to-a-random-string"
+  expire_hour: 24
+
+node:
+  token: "change-this-to-a-random-string"
+  push_interval: 60  # seconds
+  pull_interval: 60  # seconds
+
+mail:
+  host: "smtp.example.com"
+  port: 587
+  username: "your_email@example.com"
+  password: "your_password"
+  from_name: "XBoard"
+  from_addr: "noreply@example.com"
+  encryption: "tls"  # ssl, tls, none
+
+telegram:
+  bot_token: ""  # Your Telegram Bot Token
+  chat_id: ""    # Admin Chat ID for notifications

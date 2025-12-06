@@ -131,14 +131,11 @@ func (s *HostService) GenerateSingBoxConfig(hostID int64) (map[string]interface{
 	}
 
 	inbounds := make([]map[string]interface{}, 0)
-	ssmapiServers := make(map[string]string)
 
 	for _, node := range nodes {
 		inbound := s.buildInbound(&node)
 		if inbound != nil {
 			inbounds = append(inbounds, inbound)
-			// SSMAPI 路径
-			ssmapiServers["/"+node.Type] = node.Type + "-in-" + fmt.Sprintf("%d", node.ID)
 		}
 	}
 
@@ -154,23 +151,10 @@ func (s *HostService) GenerateSingBoxConfig(hostID int64) (map[string]interface{
 		},
 		"route": map[string]interface{}{
 			"rules": []map[string]interface{}{
-				{"geoip": []string{"private"}, "outbound": "block"},
+				{"ip_is_private": true, "outbound": "block"},
 			},
 			"final": "direct",
 		},
-	}
-
-	// 添加 SSMAPI 服务
-	if len(ssmapiServers) > 0 {
-		config["services"] = []map[string]interface{}{
-			{
-				"type":        "ssmapi",
-				"tag":         "ssmapi",
-				"listen":      "::",
-				"listen_port": 9000,
-				"servers":     ssmapiServers,
-			},
-		}
 	}
 
 	return config, nil

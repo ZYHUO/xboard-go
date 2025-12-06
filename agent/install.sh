@@ -103,7 +103,7 @@ install_agent() {
     
     mkdir -p $INSTALL_DIR
     
-    # 下载 Agent
+    # 下载 Agent (使用 latest 自动获取最新版本)
     AGENT_URL="https://github.com/${GITHUB_REPO}/releases/latest/download/xboard-agent-linux-${ARCH}"
     
     log_info "下载 Agent: $AGENT_URL"

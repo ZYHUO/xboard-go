@@ -1,6 +1,10 @@
 package handler
 
 import (
+	"net/http"
+	"os"
+	"path/filepath"
+
 	"xboard/internal/config"
 	"xboard/internal/middleware"
 	"xboard/internal/service"
@@ -12,6 +16,23 @@ func RegisterRoutes(r *gin.Engine, services *service.Services, cfg *config.Confi
 	// 公共中间件
 	r.Use(gin.Recovery())
 	r.Use(middleware.CORS())
+
+	// 静态文件服务
+	staticPath := "web/dist"
+	if _, err := os.Stat(staticPath); err == nil {
+		r.Static("/assets", filepath.Join(staticPath, "assets"))
+		r.StaticFile("/favicon.ico", filepath.Join(staticPath, "favicon.ico"))
+		
+		// SPA 路由支持
+		r.NoRoute(func(c *gin.Context) {
+			// API 路由返回 404
+			if len(c.Request.URL.Path) >= 4 && c.Request.URL.Path[:4] == "/api" {
+				c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+				return
+			}
+			c.File(filepath.Join(staticPath, "index.html"))
+		})
+	}
 
 	// API v1
 	v1 := r.Group("/api/v1")

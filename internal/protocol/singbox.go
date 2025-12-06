@@ -556,12 +556,6 @@ func buildTransport(network string, ps model.JSONMap) map[string]interface{} {
 	return nil
 }
 
-func parsePort(port string) int {
-	var p int
-	fmt.Sscanf(port, "%d", &p)
-	return p
-}
-
 func getDefaultSingBoxConfig() map[string]interface{} {
 	return map[string]interface{}{
 		"log": map[string]interface{}{

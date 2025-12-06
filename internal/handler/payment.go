@@ -142,57 +142,7 @@ func CheckCoupon(services *service.Services) gin.HandlerFunc {
 	}
 }
 
-// GetNotices 获取公告列表
-func GetNotices(services *service.Services) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		notices, err := services.Notice.GetVisible()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
 
-		c.JSON(http.StatusOK, gin.H{"data": notices})
-	}
-}
-
-// GetKnowledge 获取知识库
-func GetKnowledge(services *service.Services) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		language := c.DefaultQuery("language", "zh-CN")
-		category := c.Query("category")
-
-		var items interface{}
-		var err error
-
-		if category != "" {
-			items, err = services.Knowledge.GetByCategory(category, language)
-		} else {
-			items, err = services.Knowledge.GetVisible(language)
-		}
-
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"data": items})
-	}
-}
-
-// GetKnowledgeCategories 获取知识库分类
-func GetKnowledgeCategories(services *service.Services) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		language := c.DefaultQuery("language", "zh-CN")
-
-		categories, err := services.Knowledge.GetCategories(language)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"data": categories})
-	}
-}
 
 // GetInviteInfo 获取邀请信息
 func GetInviteInfo(services *service.Services) gin.HandlerFunc {

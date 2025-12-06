@@ -148,6 +148,18 @@ func AdminCreateServer(services *service.Services) gin.HandlerFunc {
 			return
 		}
 
+		// 转换 Tags 为 JSONArray
+		tags := make(model.JSONArray, len(req.Tags))
+		for i, t := range req.Tags {
+			tags[i] = t
+		}
+
+		// 转换 GroupID 为 JSONArray
+		groupIDs := make(model.JSONArray, len(req.GroupID))
+		for i, g := range req.GroupID {
+			groupIDs[i] = g
+		}
+
 		server := &model.Server{
 			Name:             req.Name,
 			Type:             req.Type,
@@ -155,9 +167,9 @@ func AdminCreateServer(services *service.Services) gin.HandlerFunc {
 			Port:             req.Port,
 			Rate:             req.Rate,
 			Show:             req.Show,
-			Tags:             req.Tags,
-			GroupID:          req.GroupID,
-			ProtocolSettings: req.ProtocolSettings,
+			Tags:             tags,
+			GroupIDs:         groupIDs,
+			ProtocolSettings: model.JSONMap(req.ProtocolSettings),
 			CreatedAt:        time.Now().Unix(),
 			UpdatedAt:        time.Now().Unix(),
 		}
@@ -203,15 +215,27 @@ func AdminUpdateServer(services *service.Services) gin.HandlerFunc {
 			return
 		}
 
+		// 转换 Tags 为 JSONArray
+		tags := make(model.JSONArray, len(req.Tags))
+		for i, t := range req.Tags {
+			tags[i] = t
+		}
+
+		// 转换 GroupID 为 JSONArray
+		groupIDs := make(model.JSONArray, len(req.GroupID))
+		for i, g := range req.GroupID {
+			groupIDs[i] = g
+		}
+
 		server.Name = req.Name
 		server.Type = req.Type
 		server.Host = req.Host
 		server.Port = req.Port
 		server.Rate = req.Rate
 		server.Show = req.Show
-		server.Tags = req.Tags
-		server.GroupID = req.GroupID
-		server.ProtocolSettings = req.ProtocolSettings
+		server.Tags = tags
+		server.GroupIDs = groupIDs
+		server.ProtocolSettings = model.JSONMap(req.ProtocolSettings)
 		server.UpdatedAt = time.Now().Unix()
 
 		if err := services.Server.UpdateServer(server); err != nil {
@@ -655,73 +679,6 @@ func AdminUpdateSettings(services *service.Services) gin.HandlerFunc {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
-		}
-
-		c.JSON(http.StatusOK, gin.H{"data": true})
-	}
-}
-
-
-// AdminDeleteUser 删除用户
-func AdminDeleteUser(services *service.Services) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-
-		if err := services.Stats.DeleteUser(id); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"data": true})
-	}
-}
-
-// AdminResetUserTraffic 重置用户流量
-func AdminResetUserTraffic(services *service.Services) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-
-		if err := services.Stats.ResetUserTraffic(id); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"data": true})
-	}
-}
-
-// AdminGetOrder 获取订单详情
-func AdminGetOrder(services *service.Services) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-
-		order, err := services.Order.GetByID(id)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "order not found"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"data": order})
-	}
-}
-
-// AdminUpdateOrderStatus 更新订单状态
-func AdminUpdateOrderStatus(services *service.Services) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-
-		var req struct {
-			Status int `json:"status" binding:"required"`
-		}
-
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		if err := services.Stats.UpdateOrderStatus(id, req.Status); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{"data": true})

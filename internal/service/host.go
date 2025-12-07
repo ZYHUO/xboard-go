@@ -151,33 +151,32 @@ func (s *HostService) GetNodeByID(nodeID int64) (*model.ServerNode, error) {
 // GenerateSingBoxConfig 生成 sing-box 配置
 func (s *HostService) GenerateSingBoxConfig(hostID int64) (map[string]interface{}, error) {
 	inbounds := make([]map[string]interface{}, 0)
+	processedServerIDs := make(map[int64]bool) // 记录已处理的 Server ID，避免重复
 
 	// 1. 从绑定到主机的 Server 获取配置
 	servers, err := s.serverRepo.GetByHostID(hostID)
 	if err == nil {
 		for _, server := range servers {
+			if processedServerIDs[server.ID] {
+				continue
+			}
 			inbound := s.buildInboundFromServer(&server)
 			if inbound != nil {
 				inbounds = append(inbounds, inbound)
+				processedServerIDs[server.ID] = true
 			}
 		}
 	}
 
-	// 2. 获取未绑定主机的 Server（公共服务器）
-	unboundServers, err := s.serverRepo.GetUnboundServers()
-	if err == nil {
-		for _, server := range unboundServers {
-			inbound := s.buildInboundFromServer(&server)
-			if inbound != nil {
-				inbounds = append(inbounds, inbound)
-			}
-		}
-	}
-
-	// 3. 从 ServerNode 获取配置（兼容旧逻辑）
+	// 2. 从 ServerNode 获取配置（兼容旧逻辑）
+	// 注意：不再处理未绑定的公共服务器，避免重复
 	nodes, err := s.nodeRepo.FindByHostID(hostID)
 	if err == nil {
 		for _, node := range nodes {
+			// 如果节点绑定了 Server，且该 Server 已处理，跳过
+			if node.ServerID != nil && processedServerIDs[*node.ServerID] {
+				continue
+			}
 			inbound := s.buildInbound(&node)
 			if inbound != nil {
 				inbounds = append(inbounds, inbound)
@@ -712,11 +711,15 @@ func (s *HostService) GetAgentConfig(hostID int64) (*AgentConfig, error) {
 	}
 
 	nodeConfigs := make([]AgentNodeConfig, 0)
+	processedServerIDs := make(map[int64]bool) // 记录已处理的 Server ID，避免重复
 
 	// 1. 从绑定到主机的 Server 获取配置
 	servers, err := s.serverRepo.GetByHostID(hostID)
 	if err == nil {
 		for _, server := range servers {
+			if processedServerIDs[server.ID] {
+				continue
+			}
 			users, _ := s.GetUsersForServer(&server)
 			nodeConfigs = append(nodeConfigs, AgentNodeConfig{
 				ID:    server.ID,
@@ -725,28 +728,19 @@ func (s *HostService) GetAgentConfig(hostID int64) (*AgentConfig, error) {
 				Tag:   server.Type + "-in-" + fmt.Sprintf("%d", server.ID),
 				Users: users,
 			})
+			processedServerIDs[server.ID] = true
 		}
 	}
 
-	// 2. 获取未绑定主机的 Server（公共服务器，所有主机都可以使用）
-	unboundServers, err := s.serverRepo.GetUnboundServers()
-	if err == nil {
-		for _, server := range unboundServers {
-			users, _ := s.GetUsersForServer(&server)
-			nodeConfigs = append(nodeConfigs, AgentNodeConfig{
-				ID:    server.ID,
-				Type:  server.Type,
-				Port:  server.ServerPort,
-				Tag:   server.Type + "-in-" + fmt.Sprintf("%d", server.ID),
-				Users: users,
-			})
-		}
-	}
-
-	// 3. 从 ServerNode 获取配置（兼容旧逻辑）
+	// 2. 从 ServerNode 获取配置（兼容旧逻辑）
+	// 注意：不再处理未绑定的公共服务器，避免重复
 	nodes, err := s.nodeRepo.FindByHostID(hostID)
 	if err == nil {
 		for _, node := range nodes {
+			// 如果节点绑定了 Server，且该 Server 已处理，跳过
+			if node.ServerID != nil && processedServerIDs[*node.ServerID] {
+				continue
+			}
 			users, _ := s.GetUsersForNode(&node)
 			nodeConfigs = append(nodeConfigs, AgentNodeConfig{
 				ID:    node.ID,

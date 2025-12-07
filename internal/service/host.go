@@ -452,9 +452,11 @@ func (s *HostService) GetUsersForNode(node *model.ServerNode) ([]map[string]inte
 		}
 
 		// 根据协议类型设置密码字段
+		// 注意：服务端用户列表需要的是用户密钥，不是完整的 serverKey:userKey
 		switch nodeType {
 		case model.NodeTypeShadowsocks:
-			userConfig["password"] = s.generateSS2022PasswordWithConfig(protocolSettings, createdAt, &user)
+			// 服务端需要的是仅用户密钥
+			userConfig["password"] = s.getSS2022UserKey(protocolSettings, &user)
 		case model.NodeTypeVMess, model.NodeTypeVLESS:
 			userConfig["uuid"] = user.UUID
 		case model.NodeTypeTrojan, model.NodeTypeHysteria2, model.NodeTypeTUIC, model.NodeTypeAnyTLS:
@@ -478,6 +480,7 @@ func (s *HostService) generateSS2022Password(node *model.ServerNode, user *model
 }
 
 // generateSS2022PasswordWithConfig 根据配置生成 SS2022 密码
+// 返回格式: serverKey:userKey (用于客户端订阅)
 func (s *HostService) generateSS2022PasswordWithConfig(ps model.JSONMap, createdAt int64, user *model.User) string {
 	cipher := ""
 	if c, ok := ps["method"].(string); ok {
@@ -486,18 +489,19 @@ func (s *HostService) generateSS2022PasswordWithConfig(ps model.JSONMap, created
 		cipher = c
 	}
 
-	switch cipher {
-	case "2022-blake3-aes-128-gcm":
-		serverKey := utils.GetServerKey(createdAt, 16)
-		userKey := utils.UUIDToBase64(user.UUID, 16)
-		return serverKey + ":" + userKey
-	case "2022-blake3-aes-256-gcm", "2022-blake3-chacha20-poly1305":
-		serverKey := utils.GetServerKey(createdAt, 32)
-		userKey := utils.UUIDToBase64(user.UUID, 32)
-		return serverKey + ":" + userKey
-	default:
-		return user.UUID
+	return utils.GenerateSS2022Password(cipher, createdAt, user.UUID)
+}
+
+// getSS2022UserKey 获取 SS2022 用户密钥 (用于服务端用户列表)
+func (s *HostService) getSS2022UserKey(ps model.JSONMap, user *model.User) string {
+	cipher := ""
+	if c, ok := ps["method"].(string); ok {
+		cipher = c
+	} else if c, ok := ps["cipher"].(string); ok {
+		cipher = c
 	}
+
+	return utils.GetSS2022UserPassword(cipher, user.UUID)
 }
 
 // GetDefaultNodeConfig 获取默认节点配置（带完整默认值）
@@ -717,9 +721,10 @@ func (s *HostService) GetUsersForServer(server *model.Server) ([]map[string]inte
 			"username": user.UUID,
 		}
 
+		// 服务端用户列表需要的是仅用户密钥
 		switch server.Type {
 		case model.ServerTypeShadowsocks:
-			userConfig["password"] = s.generateSS2022PasswordForServer(server, &user)
+			userConfig["password"] = s.getSS2022UserKeyForServer(server, &user)
 		case model.ServerTypeVmess, model.ServerTypeVless:
 			userConfig["uuid"] = user.UUID
 		case model.ServerTypeTrojan, model.ServerTypeHysteria, model.ServerTypeTuic:
@@ -732,8 +737,8 @@ func (s *HostService) GetUsersForServer(server *model.Server) ([]map[string]inte
 	return result, nil
 }
 
-// generateSS2022PasswordForServer 为 Server 生成 SS2022 密码
-func (s *HostService) generateSS2022PasswordForServer(server *model.Server, user *model.User) string {
+// getSS2022UserKeyForServer 获取 Server 的 SS2022 用户密钥 (仅用户密钥，用于服务端)
+func (s *HostService) getSS2022UserKeyForServer(server *model.Server, user *model.User) string {
 	cipher := ""
 	if c, ok := server.ProtocolSettings["method"].(string); ok {
 		cipher = c
@@ -741,18 +746,7 @@ func (s *HostService) generateSS2022PasswordForServer(server *model.Server, user
 		cipher = c
 	}
 
-	switch cipher {
-	case "2022-blake3-aes-128-gcm":
-		serverKey := utils.GetServerKey(server.CreatedAt, 16)
-		userKey := utils.UUIDToBase64(user.UUID, 16)
-		return serverKey + ":" + userKey
-	case "2022-blake3-aes-256-gcm", "2022-blake3-chacha20-poly1305":
-		serverKey := utils.GetServerKey(server.CreatedAt, 32)
-		userKey := utils.UUIDToBase64(user.UUID, 32)
-		return serverKey + ":" + userKey
-	default:
-		return user.UUID
-	}
+	return utils.GetSS2022UserPassword(cipher, user.UUID)
 }
 
 // ToJSON 转换为 JSON

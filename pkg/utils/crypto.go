@@ -52,30 +52,76 @@ func SHA256(s string) string {
 }
 
 // GetServerKey 生成服务器密钥 (用于 Shadowsocks 2022)
+// size: 16 for aes-128, 32 for aes-256/chacha20
 func GetServerKey(createdAt int64, size int) string {
-	key := fmt.Sprintf("%d", createdAt)
-	hash := sha256.Sum256([]byte(key))
+	// 使用 createdAt 作为种子生成固定的服务器密钥
+	seed := fmt.Sprintf("xboard-ss2022-server-key-%d", createdAt)
+	hash := sha256.Sum256([]byte(seed))
+	// 取前 size 字节并编码为 base64
 	return base64.StdEncoding.EncodeToString(hash[:size])
 }
 
-// UUIDToBase64 将 UUID 转换为 Base64 (用于 Shadowsocks 2022)
-// 对于需要 32 字节密钥的加密方式，使用 SHA256 扩展 UUID
+// UUIDToBase64 将 UUID 转换为 Base64 密钥 (用于 Shadowsocks 2022)
+// size: 16 for aes-128, 32 for aes-256/chacha20
 func UUIDToBase64(uuidStr string, size int) string {
 	// 移除 UUID 中的连字符
-	uuidStr = strings.ReplaceAll(uuidStr, "-", "")
+	cleanUUID := strings.ReplaceAll(uuidStr, "-", "")
 	
-	if size <= 16 {
-		// 16 字节密钥：直接使用 UUID 的字节
-		bytes, _ := hex.DecodeString(uuidStr)
-		if len(bytes) > size {
-			bytes = bytes[:size]
-		}
-		return base64.StdEncoding.EncodeToString(bytes)
+	// 使用 UUID 作为种子生成用户密钥
+	seed := fmt.Sprintf("xboard-ss2022-user-key-%s", cleanUUID)
+	hash := sha256.Sum256([]byte(seed))
+	// 取前 size 字节并编码为 base64
+	return base64.StdEncoding.EncodeToString(hash[:size])
+}
+
+// GenerateSS2022Password 生成完整的 SS2022 密码
+// cipher: 加密方式 (2022-blake3-aes-128-gcm, 2022-blake3-aes-256-gcm, 2022-blake3-chacha20-poly1305)
+// createdAt: 服务器创建时间戳
+// userUUID: 用户 UUID
+// 返回格式: serverKey:userKey (用于客户端) 或 serverKey (用于服务端)
+func GenerateSS2022Password(cipher string, createdAt int64, userUUID string) string {
+	var keySize int
+	switch cipher {
+	case "2022-blake3-aes-128-gcm":
+		keySize = 16
+	case "2022-blake3-aes-256-gcm", "2022-blake3-chacha20-poly1305":
+		keySize = 32
+	default:
+		// 非 SS2022 加密方式，直接返回 UUID
+		return userUUID
 	}
 	
-	// 32 字节密钥：使用 SHA256 哈希 UUID 来生成足够长度的密钥
-	hash := sha256.Sum256([]byte(uuidStr))
-	return base64.StdEncoding.EncodeToString(hash[:size])
+	serverKey := GetServerKey(createdAt, keySize)
+	userKey := UUIDToBase64(userUUID, keySize)
+	return serverKey + ":" + userKey
+}
+
+// GetSS2022ServerPassword 获取 SS2022 服务端密码 (仅服务器密钥)
+func GetSS2022ServerPassword(cipher string, createdAt int64) string {
+	var keySize int
+	switch cipher {
+	case "2022-blake3-aes-128-gcm":
+		keySize = 16
+	case "2022-blake3-aes-256-gcm", "2022-blake3-chacha20-poly1305":
+		keySize = 32
+	default:
+		return ""
+	}
+	return GetServerKey(createdAt, keySize)
+}
+
+// GetSS2022UserPassword 获取 SS2022 用户密钥 (仅用户密钥，用于服务端用户列表)
+func GetSS2022UserPassword(cipher string, userUUID string) string {
+	var keySize int
+	switch cipher {
+	case "2022-blake3-aes-128-gcm":
+		keySize = 16
+	case "2022-blake3-aes-256-gcm", "2022-blake3-chacha20-poly1305":
+		keySize = 32
+	default:
+		return userUUID
+	}
+	return UUIDToBase64(userUUID, keySize)
 }
 
 // RandomPort 从端口范围中随机选择一个端口

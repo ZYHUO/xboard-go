@@ -84,7 +84,7 @@ func (s *ServerService) buildServerInfo(server *model.Server, user *model.User) 
 	return info
 }
 
-// generateServerPassword 生成服务器密码
+// generateServerPassword 生成服务器密码 (用于客户端订阅)
 func (s *ServerService) generateServerPassword(server *model.Server, user *model.User) string {
 	if server.Type != model.ServerTypeShadowsocks {
 		return user.UUID
@@ -95,19 +95,14 @@ func (s *ServerService) generateServerPassword(server *model.Server, user *model
 	if ps, ok := server.ProtocolSettings["cipher"]; ok {
 		cipher, _ = ps.(string)
 	}
-
-	switch cipher {
-	case "2022-blake3-aes-128-gcm":
-		serverKey := utils.GetServerKey(server.CreatedAt, 16)
-		userKey := utils.UUIDToBase64(user.UUID, 16)
-		return fmt.Sprintf("%s:%s", serverKey, userKey)
-	case "2022-blake3-aes-256-gcm", "2022-blake3-chacha20-poly1305":
-		serverKey := utils.GetServerKey(server.CreatedAt, 32)
-		userKey := utils.UUIDToBase64(user.UUID, 32)
-		return fmt.Sprintf("%s:%s", serverKey, userKey)
-	default:
-		return user.UUID
+	if cipher == "" {
+		if ps, ok := server.ProtocolSettings["method"]; ok {
+			cipher, _ = ps.(string)
+		}
 	}
+
+	// 使用统一的密码生成函数
+	return utils.GenerateSS2022Password(cipher, server.CreatedAt, user.UUID)
 }
 
 // GetAvailableUsers 获取节点可用的用户列表

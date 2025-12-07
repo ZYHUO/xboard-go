@@ -50,11 +50,12 @@ type Agent struct {
 	singboxCmd    *exec.Cmd
 	lastConfig    string
 	httpClient    *http.Client
-	userVersions  map[int64]int64  // 节点用户版本缓存
-	userHashes    map[int64]string // 节点用户哈希缓存
+	userVersions  map[int64]int64        // 节点用户版本缓存
+	userHashes    map[int64]string       // 节点用户哈希缓存
 	lastTraffic   map[string]TrafficData // 上次流量数据，用于计算增量
-	nodeConfigs   []NodeConfig     // 当前节点配置
-	clashAPIPort  int              // Clash API 端口
+	nodeConfigs   []NodeConfig           // 当前节点配置
+	clashAPIPort  int                    // Clash API 端口
+	portUserMap   map[int][]string       // 端口到用户的映射（用于单端口多用户场景）
 }
 
 // TrafficData 流量数据
@@ -73,6 +74,7 @@ func NewAgent() *Agent {
 		userVersions: make(map[int64]int64),
 		userHashes:   make(map[int64]string),
 		lastTraffic:  make(map[string]TrafficData),
+		portUserMap:  make(map[int][]string),
 		clashAPIPort: 9090,
 	}
 }
@@ -193,6 +195,18 @@ func (a *Agent) getConfig() (*AgentConfig, error) {
 func (a *Agent) updateConfig(config *AgentConfig) (bool, error) {
 	// 保存节点配置用于流量上报
 	a.nodeConfigs = config.Nodes
+
+	// 构建端口到用户的映射
+	a.portUserMap = make(map[int][]string)
+	for _, node := range config.Nodes {
+		users := make([]string, 0, len(node.Users))
+		for _, user := range node.Users {
+			if name, ok := user["name"].(string); ok {
+				users = append(users, name)
+			}
+		}
+		a.portUserMap[node.Port] = users
+	}
 
 	// 注入用户到 inbounds
 	singboxConfig := config.SingBoxConfig
@@ -340,9 +354,11 @@ func (a *Agent) getTrafficFromClashAPI() (map[string]TrafficData, error) {
 
 // reportTraffic 上报流量到面板
 func (a *Agent) reportTraffic() error {
+	// 尝试从 Clash API 获取用户流量
 	traffic, err := a.getTrafficFromClashAPI()
 	if err != nil {
-		return err
+		// Clash API 不可用，使用端口流量平均分配方案
+		return a.reportTrafficByPort()
 	}
 
 	// 调试：打印获取到的流量数据
@@ -370,7 +386,8 @@ func (a *Agent) reportTraffic() error {
 	}
 
 	if len(trafficReport) == 0 {
-		return nil
+		// 没有用户流量，尝试端口流量方案
+		return a.reportTrafficByPort()
 	}
 
 	// 构建上报数据
@@ -389,6 +406,89 @@ func (a *Agent) reportTraffic() error {
 		fmt.Printf("⚠ 流量上报失败: %v\n", err)
 	} else {
 		fmt.Printf("✓ 已上报 %d 个用户的流量\n", len(trafficReport))
+	}
+	return err
+}
+
+// reportTrafficByPort 通过端口流量平均分配给用户（备用方案）
+func (a *Agent) reportTrafficByPort() error {
+	// 获取总流量
+	url := fmt.Sprintf("http://127.0.0.1:%d/traffic", a.clashAPIPort)
+	resp, err := a.httpClient.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Up   int64 `json:"up"`
+		Down int64 `json:"down"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return err
+	}
+
+	// 如果没有流量，直接返回
+	if result.Up == 0 && result.Down == 0 {
+		return nil
+	}
+
+	// 计算增量
+	lastTotal := a.lastTraffic["__total__"]
+	uploadDelta := result.Up - lastTotal.Upload
+	downloadDelta := result.Down - lastTotal.Download
+
+	if uploadDelta <= 0 && downloadDelta <= 0 {
+		return nil
+	}
+
+	a.lastTraffic["__total__"] = TrafficData{
+		Upload:   result.Up,
+		Download: result.Down,
+	}
+
+	fmt.Printf("📊 总流量: ↑%.2f MB ↓%.2f MB\n", float64(uploadDelta)/1024/1024, float64(downloadDelta)/1024/1024)
+
+	// 为每个节点的所有用户平均分配流量
+	nodes := make([]map[string]interface{}, 0)
+	for _, node := range a.nodeConfigs {
+		users := a.portUserMap[node.Port]
+		if len(users) == 0 {
+			continue
+		}
+
+		// 平均分配流量
+		avgUpload := uploadDelta / int64(len(users))
+		avgDownload := downloadDelta / int64(len(users))
+
+		trafficReport := make([]map[string]interface{}, 0, len(users))
+		for _, user := range users {
+			trafficReport = append(trafficReport, map[string]interface{}{
+				"username": user,
+				"upload":   avgUpload,
+				"download": avgDownload,
+			})
+		}
+
+		nodes = append(nodes, map[string]interface{}{
+			"id":    node.ID,
+			"users": trafficReport,
+		})
+
+		fmt.Printf("  节点 %d: 为 %d 个用户平均分配流量\n", node.ID, len(users))
+	}
+
+	if len(nodes) == 0 {
+		return nil
+	}
+
+	_, err = a.apiRequest("POST", "/traffic", map[string]interface{}{
+		"nodes": nodes,
+	})
+	if err != nil {
+		fmt.Printf("⚠ 流量上报失败: %v\n", err)
+	} else {
+		fmt.Printf("✓ 已上报流量（平均分配模式）\n")
 	}
 	return err
 }

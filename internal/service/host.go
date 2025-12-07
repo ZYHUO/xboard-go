@@ -208,23 +208,34 @@ func (s *HostService) buildInboundFromServer(server *model.Server) map[string]in
 		if k == "tls_settings" || k == "network_settings" || k == "tls" {
 			continue
 		}
+		// sing-box 使用 method 而不是 cipher
+		if k == "cipher" {
+			inbound["method"] = v
+			continue
+		}
 		inbound[k] = v
 	}
 
-	// Shadowsocks 2022 需要服务器密钥
+	// Shadowsocks 需要特殊处理
 	if server.Type == model.ServerTypeShadowsocks {
+		// 获取加密方式
 		cipher := ""
 		if c, ok := server.ProtocolSettings["method"].(string); ok {
 			cipher = c
 		} else if c, ok := server.ProtocolSettings["cipher"].(string); ok {
 			cipher = c
 		}
+		
+		// 确保 method 字段存在，删除 cipher 字段
+		inbound["method"] = cipher
+		delete(inbound, "cipher")
+		
+		// 为 SS2022 生成服务器密钥
 		if strings.HasPrefix(cipher, "2022-") {
 			keySize := 16
 			if cipher == "2022-blake3-aes-256-gcm" || cipher == "2022-blake3-chacha20-poly1305" {
 				keySize = 32
 			}
-			inbound["method"] = cipher
 			inbound["password"] = utils.GetServerKey(server.CreatedAt, keySize)
 		}
 	}
@@ -304,28 +315,39 @@ func (s *HostService) buildInbound(node *model.ServerNode) map[string]interface{
 
 	// 合并协议设置
 	for k, v := range protocolSettings {
-		// 跳过 tls_settings 和 network_settings，它们单独处理
+		// 跳过不需要的字段
 		if k == "tls_settings" || k == "network_settings" || k == "tls" {
+			continue
+		}
+		// sing-box 使用 method 而不是 cipher
+		if k == "cipher" {
+			inbound["method"] = v
 			continue
 		}
 		inbound[k] = v
 	}
 
-	// Shadowsocks 2022 需要服务器密钥
+	// Shadowsocks 需要特殊处理
 	if nodeType == model.NodeTypeShadowsocks {
+		// 获取加密方式
 		cipher := ""
 		if c, ok := protocolSettings["method"].(string); ok {
 			cipher = c
 		} else if c, ok := protocolSettings["cipher"].(string); ok {
 			cipher = c
 		}
+		
+		// 确保 method 字段存在
+		inbound["method"] = cipher
+		// 删除可能存在的 cipher 字段（sing-box 不认识）
+		delete(inbound, "cipher")
+		
 		// 为 SS2022 生成服务器密钥
 		if strings.HasPrefix(cipher, "2022-") {
 			keySize := 16
 			if cipher == "2022-blake3-aes-256-gcm" || cipher == "2022-blake3-chacha20-poly1305" {
 				keySize = 32
 			}
-			inbound["method"] = cipher
 			inbound["password"] = utils.GetServerKey(createdAt, keySize)
 		}
 	}

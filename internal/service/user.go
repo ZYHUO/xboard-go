@@ -254,7 +254,6 @@ func (s *UserService) GetUserInfo(user *model.User) map[string]interface{} {
 func (s *UserService) GetNodeUsersWithCache(nodeID int64, groupIDs []int64, lastVersion int64) (*NodeUsersResult, error) {
 	cacheKey := cache.NodeUserListKey(nodeID)
 	hashKey := cache.NodeUserHashKey(nodeID)
-	versionKey := cache.NodeUserVersionKey(nodeID)
 
 	// 获取当前版本
 	currentVersion, _ := s.cache.GetNodeUserVersion(nodeID)

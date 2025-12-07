@@ -140,3 +140,15 @@ func RandomPort(portRange string) int {
 	rand.Read(b)
 	return start + int(b[0])%(end-start+1)
 }
+
+// GenerateNumericCode 生成数字验证码
+func GenerateNumericCode(length int) string {
+	const digits = "0123456789"
+	code := make([]byte, length)
+	for i := range code {
+		b := make([]byte, 1)
+		rand.Read(b)
+		code[i] = digits[int(b[0])%10]
+	}
+	return string(code)
+}

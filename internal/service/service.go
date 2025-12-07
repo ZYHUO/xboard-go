@@ -30,7 +30,8 @@ type Services struct {
 func NewServices(repos *repository.Repositories, cache *cache.Client, cfg *config.Config) *Services {
 	settingService := NewSettingService(repos.Setting, cache)
 	mailService := NewMailService(cfg.Mail)
-	telegramService := NewTelegramService(cfg.Telegram, repos.User, repos.Setting)
+	telegramService := NewTelegramService(cfg.Telegram)
+	telegramService.SetRepositories(repos.User, repos.Setting)
 	serverService := NewServerService(repos.Server, repos.User, cache, cfg)
 	orderService := NewOrderService(repos.Order, repos.User, repos.Plan, repos.Coupon)
 
@@ -52,6 +53,6 @@ func NewServices(repos *repository.Repositories, cache *cache.Client, cfg *confi
 		Knowledge: NewKnowledgeService(repos.Knowledge),
 		Stats:     NewStatsService(repos.User, repos.Order, repos.Server, repos.Stat, repos.Ticket),
 		Scheduler: NewSchedulerService(repos.User, repos.Order, repos.Stat, mailService, telegramService),
-		Host:      NewHostService(repos.Host, repos.ServerNode, repos.User, repos.Server),
+		Host:      NewHostService(repos.Host, repos.ServerNode, repos.User, repos.Server, cache),
 	}
 }

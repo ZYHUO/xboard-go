@@ -1,7 +1,6 @@
 package service
 
 import (
-	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"

@@ -59,14 +59,23 @@ func GetServerKey(createdAt int64, size int) string {
 }
 
 // UUIDToBase64 将 UUID 转换为 Base64 (用于 Shadowsocks 2022)
+// 对于需要 32 字节密钥的加密方式，使用 SHA256 扩展 UUID
 func UUIDToBase64(uuidStr string, size int) string {
 	// 移除 UUID 中的连字符
 	uuidStr = strings.ReplaceAll(uuidStr, "-", "")
-	bytes, _ := hex.DecodeString(uuidStr)
-	if len(bytes) > size {
-		bytes = bytes[:size]
+	
+	if size <= 16 {
+		// 16 字节密钥：直接使用 UUID 的字节
+		bytes, _ := hex.DecodeString(uuidStr)
+		if len(bytes) > size {
+			bytes = bytes[:size]
+		}
+		return base64.StdEncoding.EncodeToString(bytes)
 	}
-	return base64.StdEncoding.EncodeToString(bytes)
+	
+	// 32 字节密钥：使用 SHA256 哈希 UUID 来生成足够长度的密钥
+	hash := sha256.Sum256([]byte(uuidStr))
+	return base64.StdEncoding.EncodeToString(hash[:size])
 }
 
 // RandomPort 从端口范围中随机选择一个端口

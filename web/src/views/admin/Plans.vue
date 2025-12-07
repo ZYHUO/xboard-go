@@ -5,6 +5,7 @@ import api from '@/api'
 interface Plan {
   id: number
   name: string
+  group_id: number | null
   transfer_enable: number
   speed_limit: number | null
   device_limit: number | null
@@ -15,7 +16,13 @@ interface Plan {
   sort: number
 }
 
+interface ServerGroup {
+  id: number
+  name: string
+}
+
 const plans = ref<Plan[]>([])
+const serverGroups = ref<ServerGroup[]>([])
 const loading = ref(false)
 const showModal = ref(false)
 const editingPlan = ref<Partial<Plan> | null>(null)
@@ -56,9 +63,19 @@ const fetchPlans = async () => {
   }
 }
 
+const fetchServerGroups = async () => {
+  try {
+    const res = await api.get('/api/v2/admin/server_groups')
+    serverGroups.value = res.data.data || []
+  } catch (e) {
+    console.error(e)
+  }
+}
+
 const openCreateModal = () => {
   editingPlan.value = {
     name: '',
+    group_id: null,
     transfer_enable: 100,
     speed_limit: null,
     device_limit: null,
@@ -101,7 +118,10 @@ const deletePlan = async (plan: Plan) => {
   }
 }
 
-onMounted(fetchPlans)
+onMounted(() => {
+  fetchPlans()
+  fetchServerGroups()
+})
 </script>
 
 <template>
@@ -162,9 +182,18 @@ onMounted(fetchPlans)
           <h3 class="text-lg font-bold mb-4">{{ editingPlan?.id ? '编辑套餐' : '添加套餐' }}</h3>
           
           <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">名称</label>
-              <input v-model="editingPlan!.name" type="text" class="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">名称</label>
+                <input v-model="editingPlan!.name" type="text" class="w-full px-4 py-2 border border-gray-200 rounded-xl" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">用户组</label>
+                <select v-model="editingPlan!.group_id" class="w-full px-4 py-2 border border-gray-200 rounded-xl">
+                  <option :value="null">不限制</option>
+                  <option v-for="group in serverGroups" :key="group.id" :value="group.id">{{ group.name }}</option>
+                </select>
+              </div>
             </div>
             
             <div class="grid grid-cols-3 gap-4">

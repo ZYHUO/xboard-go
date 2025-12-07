@@ -294,8 +294,8 @@ install_agent() {
     mkdir -p "$TEMP_DIR"
     cd "$TEMP_DIR"
     
-    # 下载 Agent
-    local AGENT_URL="${GH_PROXY}https://github.com/${GITHUB_REPO}/releases/download/1.1/xboard-agent-linux-${ARCH}"
+    # 下载 Agent（统一二进制，支持 amd64）
+    local AGENT_URL="${GH_PROXY}https://github.com/${GITHUB_REPO}/releases/download/1.1/xboard-agent"
     
     log_info "下载 Agent..."
     if ! wget -q --show-progress -O "$INSTALL_DIR/xboard-agent" "$AGENT_URL"; then

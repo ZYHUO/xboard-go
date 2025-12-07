@@ -29,11 +29,12 @@ curl -sL https://raw.githubusercontent.com/ZYHUO/xboard-go/main/agent/install.sh
 
 ```bash
 # 下载 Agent
-wget https://github.com/ZYHUO/xboard-go/releases/latest/download/xboard-agent-linux-amd64
-chmod +x xboard-agent-linux-amd64
+wget https://github.com/ZYHUO/xboard-go/releases/download/1.1/xboard-agent
+chmod +x xboard-agent
+mv xboard-agent /usr/local/bin/
 
 # 运行
-./xboard-agent-linux-amd64 -panel https://your-panel.com -token YOUR_TOKEN
+xboard-agent -panel https://your-panel.com -token YOUR_TOKEN
 ```
 
 ### 3. 添加节点

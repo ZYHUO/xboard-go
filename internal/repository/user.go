@@ -66,11 +66,12 @@ func (r *UserRepository) FindByUUID(uuid string) (*model.User, error) {
 // GetAvailableUsers 获取指定权限组的可用用户
 func (r *UserRepository) GetAvailableUsers(groupIDs []int64) ([]model.User, error) {
 	var users []model.User
+	now := getCurrentTimestamp()
 	err := r.db.
 		Where("group_id IN ?", groupIDs).
-		Where("u + d < transfer_enable").
-		Where("(expired_at >= ? OR expired_at IS NULL OR expired_at = 0)", getCurrentTimestamp()).
 		Where("banned = ?", false).
+		Where("(transfer_enable = 0 OR u + d < transfer_enable)"). // 流量为0表示无限制
+		Where("(expired_at IS NULL OR expired_at = 0 OR expired_at >= ?)", now).
 		Select("id", "uuid", "speed_limit", "device_limit").
 		Find(&users).Error
 	return users, err
@@ -79,11 +80,11 @@ func (r *UserRepository) GetAvailableUsers(groupIDs []int64) ([]model.User, erro
 // GetAllAvailableUsers 获取所有可用用户（不限制组）
 func (r *UserRepository) GetAllAvailableUsers() ([]model.User, error) {
 	var users []model.User
+	now := getCurrentTimestamp()
 	err := r.db.
-		Where("u + d < transfer_enable").
-		Where("(expired_at >= ? OR expired_at IS NULL OR expired_at = 0)", getCurrentTimestamp()).
 		Where("banned = ?", false).
-		Where("plan_id IS NOT NULL").
+		Where("(transfer_enable = 0 OR u + d < transfer_enable)"). // 流量为0表示无限制
+		Where("(expired_at IS NULL OR expired_at = 0 OR expired_at >= ?)", now).
 		Select("id", "uuid", "speed_limit", "device_limit").
 		Find(&users).Error
 	return users, err

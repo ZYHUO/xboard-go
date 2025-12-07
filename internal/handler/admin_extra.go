@@ -330,3 +330,70 @@ func AdminUpdatePayment(services *service.Services) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"data": true})
 	}
 }
+
+
+// ==================== 用户组管理 ====================
+
+// AdminListServerGroups 获取用户组列表
+func AdminListServerGroups(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		groups, err := services.ServerGroup.GetAll()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"data": groups})
+	}
+}
+
+// AdminCreateServerGroup 创建用户组
+func AdminCreateServerGroup(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			Name string `json:"name" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		group, err := services.ServerGroup.Create(req.Name)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"data": group})
+	}
+}
+
+// AdminUpdateServerGroup 更新用户组
+func AdminUpdateServerGroup(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+		var req struct {
+			Name string `json:"name" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		if err := services.ServerGroup.Update(id, req.Name); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"data": true})
+	}
+}
+
+// AdminDeleteServerGroup 删除用户组
+func AdminDeleteServerGroup(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err := services.ServerGroup.Delete(id); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"data": true})
+	}
+}

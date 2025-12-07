@@ -19,6 +19,7 @@ type Repositories struct {
 	Knowledge     *KnowledgeRepository
 	Host          *HostRepository
 	ServerNode    *ServerNodeRepository
+	ServerGroup   *ServerGroupRepository
 }
 
 func NewRepositories(db *gorm.DB) *Repositories {
@@ -39,5 +40,6 @@ func NewRepositories(db *gorm.DB) *Repositories {
 		Knowledge:     NewKnowledgeRepository(db),
 		Host:          NewHostRepository(db),
 		ServerNode:    NewServerNodeRepository(db),
+		ServerGroup:   NewServerGroupRepository(db),
 	}
 }

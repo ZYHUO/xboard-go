@@ -212,6 +212,12 @@ func RegisterRoutes(r *gin.Engine, services *service.Services, cfg *config.Confi
 			admin.POST("/payment", AdminCreatePayment(services))
 			admin.PUT("/payment/:id", AdminUpdatePayment(services))
 
+			// Server Group management (用户组管理)
+			admin.GET("/server_groups", AdminListServerGroups(services))
+			admin.POST("/server_group", AdminCreateServerGroup(services))
+			admin.PUT("/server_group/:id", AdminUpdateServerGroup(services))
+			admin.DELETE("/server_group/:id", AdminDeleteServerGroup(services))
+
 			// Host management (主机管理)
 			admin.GET("/hosts", AdminListHosts(services))
 			admin.POST("/host", AdminCreateHost(services))

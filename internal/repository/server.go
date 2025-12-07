@@ -117,6 +117,13 @@ func (r *ServerRepository) UnbindFromHost(hostID int64) error {
 	return r.db.Model(&model.Server{}).Where("host_id = ?", hostID).Update("host_id", nil).Error
 }
 
+// GetUnboundServers 获取未绑定主机的服务器（公共服务器）
+func (r *ServerRepository) GetUnboundServers() ([]model.Server, error) {
+	var servers []model.Server
+	err := r.db.Where("host_id IS NULL").Where("show = ?", true).Order("sort ASC").Find(&servers).Error
+	return servers, err
+}
+
 // ServerGroup Repository
 type ServerGroupRepository struct {
 	db *gorm.DB
@@ -137,8 +144,20 @@ func (r *ServerGroupRepository) FindByID(id int64) (*model.ServerGroup, error) {
 
 func (r *ServerGroupRepository) GetAll() ([]model.ServerGroup, error) {
 	var groups []model.ServerGroup
-	err := r.db.Find(&groups).Error
+	err := r.db.Order("id ASC").Find(&groups).Error
 	return groups, err
+}
+
+func (r *ServerGroupRepository) Create(group *model.ServerGroup) error {
+	return r.db.Create(group).Error
+}
+
+func (r *ServerGroupRepository) Update(group *model.ServerGroup) error {
+	return r.db.Save(group).Error
+}
+
+func (r *ServerGroupRepository) Delete(id int64) error {
+	return r.db.Delete(&model.ServerGroup{}, id).Error
 }
 
 // ServerRoute Repository

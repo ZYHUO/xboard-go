@@ -163,7 +163,18 @@ func (s *HostService) GenerateSingBoxConfig(hostID int64) (map[string]interface{
 		}
 	}
 
-	// 2. 从 ServerNode 获取配置（兼容旧逻辑）
+	// 2. 获取未绑定主机的 Server（公共服务器）
+	unboundServers, err := s.serverRepo.GetUnboundServers()
+	if err == nil {
+		for _, server := range unboundServers {
+			inbound := s.buildInboundFromServer(&server)
+			if inbound != nil {
+				inbounds = append(inbounds, inbound)
+			}
+		}
+	}
+
+	// 3. 从 ServerNode 获取配置（兼容旧逻辑）
 	nodes, err := s.nodeRepo.FindByHostID(hostID)
 	if err == nil {
 		for _, node := range nodes {
@@ -717,7 +728,22 @@ func (s *HostService) GetAgentConfig(hostID int64) (*AgentConfig, error) {
 		}
 	}
 
-	// 2. 从 ServerNode 获取配置（兼容旧逻辑）
+	// 2. 获取未绑定主机的 Server（公共服务器，所有主机都可以使用）
+	unboundServers, err := s.serverRepo.GetUnboundServers()
+	if err == nil {
+		for _, server := range unboundServers {
+			users, _ := s.GetUsersForServer(&server)
+			nodeConfigs = append(nodeConfigs, AgentNodeConfig{
+				ID:    server.ID,
+				Type:  server.Type,
+				Port:  server.ServerPort,
+				Tag:   server.Type + "-in-" + fmt.Sprintf("%d", server.ID),
+				Users: users,
+			})
+		}
+	}
+
+	// 3. 从 ServerNode 获取配置（兼容旧逻辑）
 	nodes, err := s.nodeRepo.FindByHostID(hostID)
 	if err == nil {
 		for _, node := range nodes {

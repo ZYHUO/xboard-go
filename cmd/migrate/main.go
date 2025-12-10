@@ -70,10 +70,10 @@ func runMigrations(db *gorm.DB, dir string) {
 		log.Fatalf("读取迁移目录失败: %v", err)
 	}
 
-	// 过滤并排序 SQL 文件
+	// 过滤并排序 SQL 文件（跳过 rollback 文件）
 	var sqlFiles []string
 	for _, f := range files {
-		if !f.IsDir() && strings.HasSuffix(f.Name(), ".sql") {
+		if !f.IsDir() && strings.HasSuffix(f.Name(), ".sql") && !strings.Contains(f.Name(), "_rollback") {
 			sqlFiles = append(sqlFiles, f.Name())
 		}
 	}

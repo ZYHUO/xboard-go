@@ -8,7 +8,10 @@
 bash setup.sh
 ```
 
-> **💡 提示**：安装脚本会自动从 `https://download.sharon.wiki/` 下载预编译二进制文件，无需本地编译环境。支持 amd64 和 arm64 架构。
+> **💡 提示**：安装脚本会自动从 `https://download.sharon.wiki/` 下载预编译二进制文件，无需本地编译环境。
+> - Server 文件：`https://download.sharon.wiki/server/`
+> - Agent 文件：`https://download.sharon.wiki/agent/`
+> - 支持 amd64 和 arm64 架构
 
 ## 功能菜单
 

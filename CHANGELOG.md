@@ -55,12 +55,26 @@ database:
 - ✅ 更新 `agent/install.sh` 支持自动下载二进制
 - ✅ 支持自动检测系统架构 (amd64/arm64)
 
-**下载地址**：
-```
-https://download.sharon.wiki/xboard-server-linux-amd64
-https://download.sharon.wiki/migrate-linux-amd64
-https://download.sharon.wiki/xboard-agent-linux-amd64
-```
+**下载地址**：`https://download.sharon.wiki/`
+
+**Server 文件**：`https://download.sharon.wiki/server/`
+- `xboard-server-linux-amd64`
+- `xboard-server-linux-arm64`
+- `xboard-server-windows-amd64.exe`
+- `xboard-server-darwin-amd64`
+- `xboard-server-darwin-arm64`
+- `migrate-linux-amd64`
+- `migrate-linux-arm64`
+
+**Agent 文件**：`https://download.sharon.wiki/agent/`
+- `xboard-agent-linux-amd64`
+- `xboard-agent-linux-arm64`
+- `xboard-agent-linux-386`
+- `xboard-agent-windows-amd64.exe`
+- `xboard-agent-windows-386.exe`
+- `xboard-agent-darwin-amd64`
+- `xboard-agent-darwin-arm64`
+- `xboard-agent-freebsd-amd64`
 
 **使用方式**：
 ```bash

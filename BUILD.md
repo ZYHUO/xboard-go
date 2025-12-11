@@ -2,6 +2,44 @@
 
 本文档说明如何编译 XBoard 的 Dashboard 和 Agent 组件。
 
+## 预编译二进制文件
+
+如果不想自己编译，可以直接下载预编译的二进制文件：
+
+**下载地址**：`https://download.sharon.wiki/`
+
+- **Server (Dashboard)**：`https://download.sharon.wiki/server/`
+  - `xboard-server-linux-amd64`
+  - `xboard-server-linux-arm64`
+  - `xboard-server-windows-amd64.exe`
+  - `xboard-server-darwin-amd64`
+  - `xboard-server-darwin-arm64`
+  - `migrate-linux-amd64`
+  - `migrate-linux-arm64`
+
+- **Agent**：`https://download.sharon.wiki/agent/`
+  - `xboard-agent-linux-amd64`
+  - `xboard-agent-linux-arm64`
+  - `xboard-agent-linux-386`
+  - `xboard-agent-windows-amd64.exe`
+  - `xboard-agent-windows-386.exe`
+  - `xboard-agent-darwin-amd64`
+  - `xboard-agent-darwin-arm64`
+  - `xboard-agent-freebsd-amd64`
+
+**使用方法**：
+```bash
+# 下载 Server
+wget https://download.sharon.wiki/server/xboard-server-linux-amd64
+chmod +x xboard-server-linux-amd64
+
+# 下载 Agent
+wget https://download.sharon.wiki/agent/xboard-agent-linux-amd64
+chmod +x xboard-agent-linux-amd64
+```
+
+---
+
 ## 前置要求
 
 ### 必需工具

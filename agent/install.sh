@@ -296,7 +296,7 @@ install_agent() {
     cd "$TEMP_DIR"
     
     # 下载 Agent
-    local AGENT_URL="${DOWNLOAD_BASE_URL}/xboard-agent-linux-${ARCH}"
+    local AGENT_URL="${DOWNLOAD_BASE_URL}/agent/xboard-agent-linux-${ARCH}"
     
     log_info "下载 Agent (${ARCH})..."
     if ! wget -q --show-progress -O "$INSTALL_DIR/xboard-agent" "$AGENT_URL"; then

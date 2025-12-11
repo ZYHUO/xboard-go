@@ -46,7 +46,7 @@ download_binaries() {
     # 下载 server
     if [ ! -f "xboard-server-linux-${ARCH}" ]; then
         log_info "下载 xboard-server-linux-${ARCH}..."
-        if ! wget -q --show-progress "${DOWNLOAD_BASE_URL}/xboard-server-linux-${ARCH}" -O "xboard-server-linux-${ARCH}"; then
+        if ! wget -q --show-progress "${DOWNLOAD_BASE_URL}/server/xboard-server-linux-${ARCH}" -O "xboard-server-linux-${ARCH}"; then
             log_error "下载 server 失败"
             exit 1
         fi
@@ -56,7 +56,7 @@ download_binaries() {
     # 下载 migrate
     if [ ! -f "migrate-linux-${ARCH}" ]; then
         log_info "下载 migrate-linux-${ARCH}..."
-        if ! wget -q --show-progress "${DOWNLOAD_BASE_URL}/migrate-linux-${ARCH}" -O "migrate-linux-${ARCH}"; then
+        if ! wget -q --show-progress "${DOWNLOAD_BASE_URL}/server/migrate-linux-${ARCH}" -O "migrate-linux-${ARCH}"; then
             log_error "下载 migrate 失败"
             exit 1
         fi

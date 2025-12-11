@@ -37,16 +37,18 @@ MIT License
 
 ## 怎么跑？
 
-### 一键安装
+### 一键安装（推荐）
 
 ```bash
 # 克隆项目
 git clone https://github.com/ZYHUO/xboard-go.git
 cd xboard-go
 
-# 运行一键脚本
+# 运行一键脚本（自动下载预编译二进制）
 bash setup.sh
 ```
+
+> 💡 脚本会自动从 `https://download.sharon.wiki/` 下载预编译二进制文件，无需本地编译环境。
 
 **功能菜单**：
 - 1️⃣ 全新安装（本地开发）- SQLite/MySQL
@@ -116,6 +118,7 @@ database:
 
 - 📖 [完整安装指南](README_SETUP.md)
 - 🚀 [SQLite 快速开始](QUICK_START_SQLITE.md) ⭐ 推荐
+- 📦 [预编译文件下载](docs/prebuilt-binaries.md)
 - 🔧 [编译指南](BUILD.md)
 - 📋 [更新日志](CHANGELOG.md)
 - 🔄 [Agent 自动更新](docs/agent-auto-update.md)

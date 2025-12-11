@@ -327,6 +327,44 @@ func AdminResetHostToken(services *service.Services) gin.HandlerFunc {
 	}
 }
 
+// AdminUpdateHost 更新主机配置
+func AdminUpdateHost(services *service.Services) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+		host, err := services.Host.GetByID(id)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "host not found"})
+			return
+		}
+
+		var req struct {
+			Name          *string `json:"name"`
+			SocksOutbound *string `json:"socks_outbound"` // SOCKS5 出口代理，格式：socks5://user:pass@host:port
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// 更新字段
+		if req.Name != nil {
+			host.Name = *req.Name
+		}
+		if req.SocksOutbound != nil {
+			host.SocksOutbound = req.SocksOutbound
+		}
+
+		if err := services.Host.UpdateHost(host); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"data": host})
+	}
+}
+
 // AdminListNodes 获取节点列表
 func AdminListNodes(services *service.Services) gin.HandlerFunc {
 	return func(c *gin.Context) {

@@ -37,17 +37,45 @@ MIT License
 
 ## 怎么跑？
 
-### 快速开始
+### 一键安装
 
 ```bash
 # 克隆项目
 git clone https://github.com/ZYHUO/xboard-go.git
 cd xboard-go
 
-# 运行安装脚本
-bash local-install.sh
+# 运行一键脚本
+bash setup.sh
+```
 
-# 或查看快速安装指南
+**功能菜单**：
+- 1️⃣ 全新安装（本地开发）- SQLite/MySQL
+- 2️⃣ 安装到现有 MySQL 数据库
+- 3️⃣ 升级现有数据库（保留数据）
+- 4️⃣ 修复迁移问题
+- 5️⃣ 查看迁移状态
+- 6️⃣ 生成配置文件
+
+### 快速开始
+
+```bash
+bash setup.sh
+# 选择 1 (全新安装)
+# 选择 1 (SQLite)
+./xboard-server
+```
+
+访问：http://localhost:8080
+
+**默认管理员**：
+- 邮箱：`admin@example.com`
+- 密码：`admin123456`
+
+### 详细文档
+
+- 📖 [完整安装指南](README_SETUP.md)
+- 🚀 [快速开始](QUICK_START.md)
+- 📋 [更新日志](CHANGELOG_v1.0.0.md)
 cat QUICK_INSTALL.md
 ```
 

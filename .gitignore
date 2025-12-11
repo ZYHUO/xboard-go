@@ -34,3 +34,32 @@ cache.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Database
+*.db
+*.sql
+xboard.db
+
+# Backups
+backups/
+*.backup
+*.bak
+
+# Build output
+build/
+dist/
+
+# Node modules (frontend)
+node_modules/
+web/node_modules/
+web/dist/
+
+# Environment
+.env
+.env.local
+.passwords
+
+# Temporary files
+tmp/
+temp/
+*.tmp

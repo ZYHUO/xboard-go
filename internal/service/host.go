@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -76,6 +77,11 @@ func (s *HostService) UpdateHeartbeat(hostID int64, ip string, systemInfo map[st
 	host.IP = ip
 	host.Status = model.HostStatusOnline
 	host.SystemInfo = systemInfo
+	return s.hostRepo.Update(host)
+}
+
+// UpdateHost 更新主机信息
+func (s *HostService) UpdateHost(host *model.Host) error {
 	return s.hostRepo.Update(host)
 }
 
@@ -174,21 +180,40 @@ func (s *HostService) GenerateSingBoxConfig(hostID int64) (map[string]interface{
 		}
 	}
 
+	// 获取主机信息，检查是否配置了 SOCKS 出口
+	host, err := s.hostRepo.FindByID(hostID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 构建 outbounds
+	outbounds := []map[string]interface{}{
+		{"type": "direct", "tag": "direct"},
+		{"type": "block", "tag": "block"},
+	}
+
+	// 如果配置了 SOCKS 出口，添加 SOCKS outbound 并设置为默认出口
+	finalOutbound := "direct"
+	if host.SocksOutbound != nil && *host.SocksOutbound != "" {
+		socksOutbound := s.parseSocksOutbound(*host.SocksOutbound)
+		if socksOutbound != nil {
+			outbounds = append([]map[string]interface{}{socksOutbound}, outbounds...)
+			finalOutbound = "socks-out" // 使用 SOCKS 作为默认出口
+		}
+	}
+
 	config := map[string]interface{}{
 		"log": map[string]interface{}{
 			"level":     "info",
 			"timestamp": true,
 		},
-		"inbounds": inbounds,
-		"outbounds": []map[string]interface{}{
-			{"type": "direct", "tag": "direct"},
-			{"type": "block", "tag": "block"},
-		},
+		"inbounds":  inbounds,
+		"outbounds": outbounds,
 		"route": map[string]interface{}{
 			"rules": []map[string]interface{}{
 				{"ip_is_private": true, "outbound": "block"},
 			},
-			"final": "direct",
+			"final": finalOutbound, // 使用配置的默认出口
 		},
 		"experimental": map[string]interface{}{
 			"clash_api": map[string]interface{}{
@@ -812,6 +837,60 @@ func (s *HostService) getSS2022UserKeyForServer(server *model.Server, user *mode
 func (c *AgentConfig) ToJSON() string {
 	data, _ := json.MarshalIndent(c, "", "  ")
 	return string(data)
+}
+
+// parseSocksOutbound 解析 SOCKS 出口配置
+// 支持格式：
+//   - socks5://host:port
+//   - socks5://user:pass@host:port
+func (s *HostService) parseSocksOutbound(socksURL string) map[string]interface{} {
+	// 简单解析 SOCKS URL
+	// 格式：socks5://[user:pass@]host:port
+	
+	if socksURL == "" {
+		return nil
+	}
+
+	// 移除协议前缀
+	socksURL = strings.TrimPrefix(socksURL, "socks5://")
+	socksURL = strings.TrimPrefix(socksURL, "socks://")
+
+	outbound := map[string]interface{}{
+		"type": "socks",
+		"tag":  "socks-out",
+	}
+
+	// 检查是否有认证信息
+	var server string
+	if strings.Contains(socksURL, "@") {
+		parts := strings.SplitN(socksURL, "@", 2)
+		auth := parts[0]
+		server = parts[1]
+
+		// 解析用户名和密码
+		if strings.Contains(auth, ":") {
+			authParts := strings.SplitN(auth, ":", 2)
+			outbound["username"] = authParts[0]
+			outbound["password"] = authParts[1]
+		}
+	} else {
+		server = socksURL
+	}
+
+	// 解析服务器地址和端口
+	if strings.Contains(server, ":") {
+		parts := strings.SplitN(server, ":", 2)
+		outbound["server"] = parts[0]
+		outbound["server_port"], _ = strconv.Atoi(parts[1])
+	} else {
+		outbound["server"] = server
+		outbound["server_port"] = 1080 // 默认端口
+	}
+
+	// 添加版本
+	outbound["version"] = "5"
+
+	return outbound
 }
 
 func generateHostToken() string {

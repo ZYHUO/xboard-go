@@ -221,6 +221,7 @@ func RegisterRoutes(r *gin.Engine, services *service.Services, cfg *config.Confi
 			// Host management (主机管理)
 			admin.GET("/hosts", AdminListHosts(services))
 			admin.POST("/host", AdminCreateHost(services))
+			admin.PUT("/host/:id", AdminUpdateHost(services))
 			admin.DELETE("/host/:id", AdminDeleteHost(services))
 			admin.POST("/host/:id/reset_token", AdminResetHostToken(services))
 			admin.GET("/host/:id/config", AdminGetHostConfig(services))

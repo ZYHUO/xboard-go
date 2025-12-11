@@ -10,6 +10,8 @@ type Host struct {
 	Status        int     `gorm:"column:status;default:0" json:"status"` // 0=离线 1=在线
 	LastHeartbeat *int64  `gorm:"column:last_heartbeat" json:"last_heartbeat"`
 	SystemInfo    JSONMap `gorm:"column:system_info;type:json" json:"system_info"`
+	// SOCKS 出口配置（可选）
+	SocksOutbound *string `gorm:"column:socks_outbound;type:text" json:"socks_outbound"` // SOCKS5 代理地址，格式：socks5://user:pass@host:port
 	CreatedAt     int64   `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 	UpdatedAt     int64   `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }

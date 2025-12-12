@@ -3,35 +3,62 @@ version: '3.8'
 services:
   xboard:
     build: .
+    container_name: xboard
     ports:
       - "8080:8080"
     environment:
       - TZ=Asia/Shanghai
     volumes:
-      - ./configs:/app/configs
+      - ./configs/config.yaml:/app/configs/config.yaml:ro
+      - ./data:/app/data
+      - ./web/dist:/app/web/dist:ro
     depends_on:
-      - mysql
-      - redis
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/guest/settings"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   mysql:
     image: mysql:8.0
+    container_name: xboard-mysql
     environment:
       MYSQL_ROOT_PASSWORD: xboard_password
       MYSQL_DATABASE: xboard
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
     volumes:
       - mysql_data:/var/lib/mysql
     ports:
       - "3306:3306"
     restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pxboard_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   redis:
     image: redis:7-alpine
+    container_name: xboard-redis
     volumes:
       - redis_data:/data
     ports:
       - "6379:6379"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   # sing-box 节点示例
   singbox-node:

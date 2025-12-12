@@ -254,71 +254,73 @@ create_panel_config() {
     local DB_PASS=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
     local REDIS_PASS=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 16)
     local JWT_SECRET=$(openssl rand -base64 32)
+    local NODE_TOKEN=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32)
     
-    cat > config.yaml << EOF
+    # 创建 configs 目录
+    mkdir -p configs
+    
+    cat > configs/config.yaml << EOF
+# XBoard Go Configuration for Docker
 app:
   name: "XBoard"
-  url: "http://localhost:8080"
-  debug: false
-  jwt_secret: "${JWT_SECRET}"
-  
-server:
-  host: "0.0.0.0"
-  port: 8080
-  
+  mode: "release"
+  listen: ":8080"
+
 database:
   driver: "mysql"
   host: "mysql"
   port: 3306
-  username: "xboard"
+  username: "root"
   password: "${DB_PASS}"
   database: "xboard"
-  
+
 redis:
   host: "redis"
   port: 6379
   password: "${REDIS_PASS}"
-  database: 0
-  
+  db: 0
+
+jwt:
+  secret: "${JWT_SECRET}"
+  expire_hour: 24
+
+node:
+  token: "${NODE_TOKEN}"
+  push_interval: 60
+  pull_interval: 60
+  enable_sync: false
+
 mail:
-  driver: "smtp"
-  host: "smtp.gmail.com"
+  host: "smtp.example.com"
   port: 587
   username: ""
   password: ""
-  encryption: "tls"
-  from_address: ""
   from_name: "XBoard"
-  
+  from_addr: "noreply@example.com"
+  encryption: "tls"
+
 telegram:
   bot_token: ""
-  
-subscribe:
-  single_mode: false
-  
-payment:
-  alipay:
-    app_id: ""
-    private_key: ""
-    public_key: ""
-  stripe:
-    public_key: ""
-    secret_key: ""
-    webhook_secret: ""
+  chat_id: ""
+
+admin:
+  email: "admin@example.com"
+  password: "admin123456"
 EOF
     
     # 保存密码到环境文件
     cat > .env << EOF
-MYSQL_ROOT_PASSWORD=root_${DB_PASS}
+MYSQL_ROOT_PASSWORD=${DB_PASS}
 MYSQL_DATABASE=xboard
-MYSQL_USER=xboard
-MYSQL_PASSWORD=${DB_PASS}
 REDIS_PASSWORD=${REDIS_PASS}
+JWT_SECRET=${JWT_SECRET}
+NODE_TOKEN=${NODE_TOKEN}
 EOF
     
-    log_info "配置文件已创建: config.yaml"
+    log_info "配置文件已创建: configs/config.yaml"
     log_hint "数据库密码: ${DB_PASS}"
     log_hint "Redis 密码: ${REDIS_PASS}"
+    log_hint "节点 Token: ${NODE_TOKEN}"
 }
 
 # 创建 Docker Compose 文件

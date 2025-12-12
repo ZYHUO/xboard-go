@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+LICENSE
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+xboard-server*
+xboard-agent*
+migrate*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+data/
+*.db
+*.log
+
+# Config (will be mounted)
+configs/config.yaml
+
+# Docker
+docker-compose*.yaml
+Dockerfile*
+
+# Scripts
+*.sh
+*.ps1
+
+# Temporary
+tmp/
+temp/
+.tmp/
+
+# Node modules (if any)
+node_modules/

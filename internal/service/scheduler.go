@@ -246,10 +246,6 @@ func (s *SchedulerService) generateDailyStats() {
 func (s *SchedulerService) GenerateDailyStats() error {
 	log.Println("[Scheduler] Generating daily traffic stats...")
 
-	now := time.Now()
-	yesterday := time.Date(now.Year(), now.Month(), now.Day()-1, 0, 0, 0, 0, now.Location())
-	recordAt := yesterday.Unix()
-
 	// 这个方法已经在 dailyTasks 中调用了 generateDailyStats
 	// 这里提供一个公开的方法供手动调用
 	return nil

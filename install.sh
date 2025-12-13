@@ -344,15 +344,20 @@ install_panel() {
             if wget --show-progress -O dashgo.zip "$REPO_URL" 2>&1; then
                 log_info "解压配置模板..."
                 unzip -q dashgo.zip
+                # 调试：显示解压后的目录
+                log_info "解压后的目录列表:"
+                ls -la
                 # 只复制必要的配置文件和静态资源
-                if [ -d "dashgo-main" ]; then
-                    cp -r dashgo-main/configs "$INSTALL_DIR/" 2>/dev/null || mkdir -p "$INSTALL_DIR/configs"
-                    cp -r dashgo-main/web/dist "$INSTALL_DIR/web/" 2>/dev/null || mkdir -p "$INSTALL_DIR/web/dist"
-                    cp dashgo-main/docker-compose.yaml "$INSTALL_DIR/" 2>/dev/null || true
-                    cp dashgo-main/Dockerfile "$INSTALL_DIR/" 2>/dev/null || true
-                    log_success "配置模板下载完成"
+                local extracted_dir=$(ls -d *-main 2>/dev/null | head -1)
+                log_info "检测到的目录: $extracted_dir"
+                if [ -n "$extracted_dir" ] && [ -d "$extracted_dir" ]; then
+                    cp -r "$extracted_dir/configs" "$INSTALL_DIR/" 2>/dev/null || mkdir -p "$INSTALL_DIR/configs"
+                    cp -r "$extracted_dir/web/dist" "$INSTALL_DIR/web/" 2>/dev/null || mkdir -p "$INSTALL_DIR/web/dist"
+                    cp "$extracted_dir/docker-compose.yaml" "$INSTALL_DIR/" 2>/dev/null || true
+                    cp "$extracted_dir/Dockerfile" "$INSTALL_DIR/" 2>/dev/null || true
+                    log_success "配置模板下载完成 (从 $extracted_dir)"
                 else
-                    log_warn "未找到解压目录 dashgo-main"
+                    log_warn "未找到解压目录 (*-main)"
                     mkdir -p "$INSTALL_DIR/configs"
                     mkdir -p "$INSTALL_DIR/web/dist"
                 fi
@@ -385,11 +390,14 @@ install_panel() {
         if wget --show-progress -O dashgo.zip "$REPO_URL" 2>&1; then
             log_info "解压源码..."
             unzip -q dashgo.zip
-            if [ -d "dashgo-main" ]; then
-                cp -r dashgo-main/* "$INSTALL_DIR/"
-                log_success "源码下载完成"
+            # 自动检测解压后的目录
+            local extracted_dir=$(ls -d *-main 2>/dev/null | head -1)
+            log_info "检测到的目录: $extracted_dir"
+            if [ -n "$extracted_dir" ] && [ -d "$extracted_dir" ]; then
+                cp -r "$extracted_dir"/* "$INSTALL_DIR/"
+                log_success "源码下载完成 (从 $extracted_dir)"
             else
-                log_error "未找到解压目录 dashgo-main"
+                log_error "未找到解压目录 (*-main)"
                 exit 1
             fi
         else
@@ -1105,17 +1113,24 @@ update_panel() {
         if wget --show-progress -O dashgo.zip "$REPO_URL" 2>&1; then
             log_info "解压源码..."
             unzip -q dashgo.zip
-            log_success "源码下载完成"
+            # 自动检测解压后的目录
+            local extracted_dir=$(ls -d *-main 2>/dev/null | head -1)
+            log_info "检测到的目录: $extracted_dir"
+            if [ -n "$extracted_dir" ] && [ -d "$extracted_dir" ]; then
+                log_success "源码下载完成 (从 $extracted_dir)"
+                # 更新文件 (保留配置和数据)
+                log_info "更新文件..."
+                rsync -av --exclude='configs/config.yaml' --exclude='config.yaml' --exclude='.env' \
+                    --exclude='data' --exclude='storage' --exclude='ssl' --exclude='web/dist' \
+                    "$extracted_dir"/* "$INSTALL_DIR/"
+            else
+                log_error "未找到解压目录 (*-main)"
+                exit 1
+            fi
         else
             log_error "源码下载失败，请检查网络连接"
             exit 1
         fi
-        
-        # 更新文件 (保留配置和数据)
-        log_info "更新文件..."
-        rsync -av --exclude='configs/config.yaml' --exclude='config.yaml' --exclude='.env' \
-            --exclude='data' --exclude='storage' --exclude='ssl' --exclude='web/dist' \
-            dashgo-main/* "$INSTALL_DIR/"
         
         cd "$INSTALL_DIR"
         

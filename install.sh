@@ -668,7 +668,7 @@ RUN mkdir -p /app/configs /app/web/dist /app/data
 
 EXPOSE 8080
 
-CMD ["/app/dashgo-server"]
+CMD ["/app/dashgo-server", "-config", "/app/configs/config.yaml"]
 EOF
     fi
 

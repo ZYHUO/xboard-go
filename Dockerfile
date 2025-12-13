@@ -37,4 +37,4 @@ COPY --from=builder /app/web/dist ./web/dist 2>/dev/null || true
 EXPOSE 8080
 
 # Run
-CMD ["./xboard", "-config", "/app/configs/config.yaml"]
+CMD ["./dashgo", "-config", "/app/configs/config.yaml"]

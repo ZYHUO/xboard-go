@@ -323,25 +323,43 @@ install_panel() {
     if [ "$install_type" = "1" ]; then
         # 使用预编译版本
         log_info "下载预编译面板..."
-        local PANEL_URL="https://download.sharon.wiki/server/xboard-server-linux-${ARCH}"
+        local PANEL_URL="https://download.sharon.wiki/server/dashgo-server-linux-${ARCH}"
+        log_info "下载地址: $PANEL_URL"
         
-        if ! wget -q --show-progress -O "$INSTALL_DIR/dashgo-server" "$PANEL_URL"; then
-            log_warn "下载预编译版本失败，切换到源码构建..."
-            install_type="2"
-        else
+        if wget --show-progress -O "$INSTALL_DIR/dashgo-server" "$PANEL_URL" 2>&1; then
             chmod +x "$INSTALL_DIR/dashgo-server"
-            log_info "预编译面板下载完成"
-            
+            log_success "预编译面板下载完成"
+        else
+            log_warn "下载预编译版本失败 (HTTP错误或网络问题)"
+            log_info "切换到源码构建..."
+            rm -f "$INSTALL_DIR/dashgo-server" 2>/dev/null
+            install_type="2"
+        fi
+        
+        if [ "$install_type" = "1" ]; then
             # 下载配置模板和静态文件
+            cd "$TEMP_DIR"
             local REPO_URL="${GH_PROXY}https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip"
             log_info "下载配置模板..."
-            if wget -q --show-progress -O dashgo.zip "$REPO_URL"; then
+            if wget --show-progress -O dashgo.zip "$REPO_URL" 2>&1; then
+                log_info "解压配置模板..."
                 unzip -q dashgo.zip
                 # 只复制必要的配置文件和静态资源
-                cp -r dashgo-main/configs "$INSTALL_DIR/" 2>/dev/null || mkdir -p "$INSTALL_DIR/configs"
-                cp -r dashgo-main/web/dist "$INSTALL_DIR/web/" 2>/dev/null || mkdir -p "$INSTALL_DIR/web/dist"
-                cp dashgo-main/docker-compose.yaml "$INSTALL_DIR/" 2>/dev/null || true
-                cp dashgo-main/Dockerfile "$INSTALL_DIR/" 2>/dev/null || true
+                if [ -d "dashgo-main" ]; then
+                    cp -r dashgo-main/configs "$INSTALL_DIR/" 2>/dev/null || mkdir -p "$INSTALL_DIR/configs"
+                    cp -r dashgo-main/web/dist "$INSTALL_DIR/web/" 2>/dev/null || mkdir -p "$INSTALL_DIR/web/dist"
+                    cp dashgo-main/docker-compose.yaml "$INSTALL_DIR/" 2>/dev/null || true
+                    cp dashgo-main/Dockerfile "$INSTALL_DIR/" 2>/dev/null || true
+                    log_success "配置模板下载完成"
+                else
+                    log_warn "未找到解压目录 dashgo-main"
+                    mkdir -p "$INSTALL_DIR/configs"
+                    mkdir -p "$INSTALL_DIR/web/dist"
+                fi
+            else
+                log_warn "配置模板下载失败，将使用默认配置"
+                mkdir -p "$INSTALL_DIR/configs"
+                mkdir -p "$INSTALL_DIR/web/dist"
             fi
         fi
     fi
@@ -362,12 +380,22 @@ install_panel() {
         local REPO_URL="${GH_PROXY}https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip"
         
         log_info "下载源码..."
-        if ! wget -q --show-progress -O dashgo.zip "$REPO_URL"; then
-            log_error "下载失败"
+        log_info "下载地址: $REPO_URL"
+        cd "$TEMP_DIR"
+        if wget --show-progress -O dashgo.zip "$REPO_URL" 2>&1; then
+            log_info "解压源码..."
+            unzip -q dashgo.zip
+            if [ -d "dashgo-main" ]; then
+                cp -r dashgo-main/* "$INSTALL_DIR/"
+                log_success "源码下载完成"
+            else
+                log_error "未找到解压目录 dashgo-main"
+                exit 1
+            fi
+        else
+            log_error "源码下载失败，请检查网络连接"
             exit 1
         fi
-        unzip -q dashgo.zip
-        cp -r dashgo-main/* "$INSTALL_DIR/"
     fi
     
     cd "$INSTALL_DIR"
@@ -822,11 +850,16 @@ install_agent() {
     cd "$TEMP_DIR"
     
     # 下载 Agent (使用新的下载地址)
-    local AGENT_URL="https://download.sharon.wiki/agent/xboard-agent-linux-${ARCH}"
+    local AGENT_URL="https://download.sharon.wiki/agent/dashgo-agent-linux-${ARCH}"
     
     log_info "下载 Agent..."
-    if ! wget -q --show-progress -O "$AGENT_DIR/dashgo-agent" "$AGENT_URL"; then
-        log_warn "下载预编译版本失败，尝试从源码构建..."
+    log_info "下载地址: $AGENT_URL"
+    if wget --show-progress -O "$AGENT_DIR/dashgo-agent" "$AGENT_URL" 2>&1; then
+        log_success "Agent 下载完成"
+    else
+        log_warn "下载预编译版本失败 (HTTP错误或网络问题)"
+        log_info "尝试从源码构建..."
+        rm -f "$AGENT_DIR/dashgo-agent" 2>/dev/null
         build_agent_from_source
     fi
     
@@ -1041,17 +1074,20 @@ update_panel() {
         mkdir -p "$TEMP_DIR"
         cd "$TEMP_DIR"
         
-        local PANEL_URL="https://download.sharon.wiki/server/xboard-server-linux-${ARCH}"
+        local PANEL_URL="https://download.sharon.wiki/server/dashgo-server-linux-${ARCH}"
+        log_info "下载地址: $PANEL_URL"
         
-        if wget -q --show-progress -O dashgo-server "$PANEL_URL"; then
+        if wget --show-progress -O dashgo-server "$PANEL_URL" 2>&1; then
             # 备份旧版本
             mv "$INSTALL_DIR/dashgo-server" "$INSTALL_DIR/dashgo-server.bak" 2>/dev/null || true
             # 安装新版本
             mv dashgo-server "$INSTALL_DIR/dashgo-server"
             chmod +x "$INSTALL_DIR/dashgo-server"
-            log_info "预编译面板更新完成"
+            log_success "预编译面板更新完成"
         else
-            log_warn "下载预编译版本失败，切换到源码更新..."
+            log_warn "下载预编译版本失败 (HTTP错误或网络问题)"
+            log_info "切换到源码更新..."
+            rm -f dashgo-server 2>/dev/null
             update_type="2"
         fi
     fi
@@ -1067,8 +1103,15 @@ update_panel() {
         
         log_info "下载最新版本..."
         local REPO_URL="${GH_PROXY}https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip"
-        wget -q --show-progress -O dashgo.zip "$REPO_URL"
-        unzip -q dashgo.zip
+        log_info "下载地址: $REPO_URL"
+        if wget --show-progress -O dashgo.zip "$REPO_URL" 2>&1; then
+            log_info "解压源码..."
+            unzip -q dashgo.zip
+            log_success "源码下载完成"
+        else
+            log_error "源码下载失败，请检查网络连接"
+            exit 1
+        fi
         
         # 更新文件 (保留配置和数据)
         log_info "更新文件..."
@@ -1140,13 +1183,17 @@ update_agent() {
     mkdir -p "$TEMP_DIR"
     cd "$TEMP_DIR"
     
-    local AGENT_URL="https://download.sharon.wiki/agent/xboard-agent-linux-${ARCH}"
+    local AGENT_URL="https://download.sharon.wiki/agent/dashgo-agent-linux-${ARCH}"
+    log_info "下载地址: $AGENT_URL"
     
-    if wget -q --show-progress -O "$AGENT_DIR/dashgo-agent.new" "$AGENT_URL"; then
+    if wget --show-progress -O "$AGENT_DIR/dashgo-agent.new" "$AGENT_URL" 2>&1; then
         mv "$AGENT_DIR/dashgo-agent.new" "$AGENT_DIR/dashgo-agent"
         chmod +x "$AGENT_DIR/dashgo-agent"
+        log_success "Agent 更新完成"
     else
-        log_warn "下载失败，尝试从源码构建..."
+        log_warn "下载失败 (HTTP错误或网络问题)"
+        log_info "尝试从源码构建..."
+        rm -f "$AGENT_DIR/dashgo-agent.new" 2>/dev/null
         build_agent_from_source
     fi
     

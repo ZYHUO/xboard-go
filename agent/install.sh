@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # dashGO Agent 一键安装脚本
-# 用法: curl -sL https://raw.githubusercontent.com/ZYHUO/dashGO/main/agent/install.sh | bash -s -- <面板地址> <Token>
+# 用法: curl -sL https://raw.githubusercontent.com/ZYHUO/dashgo/main/agent/install.sh | bash -s -- <面板地址> <Token>
 # 或者: bash install.sh <面板地址> <Token>
 
 set -e
@@ -18,13 +18,13 @@ NC='\033[0m'
 # 配置
 PANEL_URL=$1
 TOKEN=$2
-GITHUB_REPO="ZYHUO/dashGO"
+GITHUB_REPO="ZYHUO/dashgo"
 GH_PROXY='https://hub.glowp.xyz/'
 DOWNLOAD_BASE_URL="https://download.sharon.wiki"
-INSTALL_DIR="/opt/xboard-agent"
-SERVICE_NAME="xboard-agent"
+INSTALL_DIR="/opt/dashgo-agent"
+SERVICE_NAME="dashgo-agent"
 SINGBOX_DIR="/etc/sing-box"
-TEMP_DIR="/tmp/xboard-install"
+TEMP_DIR="/tmp/dashgo-install"
 SINGBOX_DEFAULT_VERSION="1.12.0"
 TLS_SERVER_DEFAULT="addons.mozilla.org"
 
@@ -53,7 +53,7 @@ check_args() {
     if [ -z "$PANEL_URL" ] || [ -z "$TOKEN" ]; then
         echo ""
         echo "=========================================="
-        echo "   XBoard Agent 安装脚本 $VERSION"
+        echo "   dashGO Agent 安装脚本 $VERSION"
         echo "=========================================="
         echo ""
         echo "用法: $0 <面板地址> <Token>"
@@ -61,7 +61,7 @@ check_args() {
         echo "示例: $0 https://your-panel.com abc123def456"
         echo ""
         echo "参数说明:"
-        echo "  面板地址: XBoard 面板的完整 URL"
+        echo "  面板地址: dashGO 面板的完整 URL"
         echo "  Token:    在面板后台 -> 节点管理 -> 添加节点时获取"
         echo ""
         exit 1
@@ -289,22 +289,26 @@ EOF
 
 # 安装 Agent
 install_agent() {
-    log_info "安装 XBoard Agent..."
+    log_info "安装 dashGO Agent..."
     
     mkdir -p "$INSTALL_DIR"
     mkdir -p "$TEMP_DIR"
     cd "$TEMP_DIR"
     
     # 下载 Agent
-    local AGENT_URL="${DOWNLOAD_BASE_URL}/agent/xboard-agent-linux-${ARCH}"
+    local AGENT_URL="${DOWNLOAD_BASE_URL}/agent/dashgo-agent-linux-${ARCH}"
     
     log_info "下载 Agent (${ARCH})..."
-    if ! wget -q --show-progress -O "$INSTALL_DIR/xboard-agent" "$AGENT_URL"; then
+    log_info "下载地址: $AGENT_URL"
+    if wget --show-progress -O "$INSTALL_DIR/dashgo-agent" "$AGENT_URL" 2>&1; then
+        log_info "Agent 下载完成"
+    else
         log_warn "下载预编译版本失败，尝试从源码构建..."
+        rm -f "$INSTALL_DIR/dashgo-agent" 2>/dev/null
         build_agent_from_source
     fi
     
-    chmod +x "$INSTALL_DIR/xboard-agent"
+    chmod +x "$INSTALL_DIR/dashgo-agent"
     
     log_info "Agent 安装完成"
 }
@@ -352,14 +356,14 @@ create_agent_service() {
         cat > /etc/init.d/${SERVICE_NAME} << EOF
 #!/sbin/openrc-run
 
-name="xboard-agent"
-description="XBoard Agent service"
-command="${INSTALL_DIR}/xboard-agent"
+name="dashgo-agent"
+description="dashGO Agent service"
+command="${INSTALL_DIR}/dashgo-agent"
 command_args="-panel ${PANEL_URL} -token ${TOKEN} -auto-update=true -update-check-interval=3600"
 pidfile="/run/\${RC_SVCNAME}.pid"
 command_background="yes"
-output_log="/var/log/xboard-agent.log"
-error_log="/var/log/xboard-agent.err"
+output_log="/var/log/dashgo-agent.log"
+error_log="/var/log/dashgo-agent.err"
 
 depend() {
     need net
@@ -369,20 +373,20 @@ EOF
         chmod +x /etc/init.d/${SERVICE_NAME}
         rc-update add ${SERVICE_NAME} default 2>/dev/null || true
         rc-service ${SERVICE_NAME} start 2>/dev/null || {
-            log_error "Agent 启动失败，查看日志: tail -f /var/log/xboard-agent.err"
+            log_error "Agent 启动失败，查看日志: tail -f /var/log/dashgo-agent.err"
             exit 1
         }
     else
         # 其他系统使用 systemd
         cat > /etc/systemd/system/${SERVICE_NAME}.service << EOF
 [Unit]
-Description=XBoard Agent
+Description=dashGO Agent
 Documentation=https://github.com/${GITHUB_REPO}
 After=network.target sing-box.service
 
 [Service]
 Type=simple
-ExecStart=${INSTALL_DIR}/xboard-agent -panel ${PANEL_URL} -token ${TOKEN} -auto-update=true -update-check-interval=3600
+ExecStart=${INSTALL_DIR}/dashgo-agent -panel ${PANEL_URL} -token ${TOKEN} -auto-update=true -update-check-interval=3600
 Restart=always
 RestartSec=5
 StandardOutput=journal
@@ -404,7 +408,7 @@ EOF
 show_status() {
     echo ""
     echo "=========================================="
-    echo -e "${GREEN}XBoard Agent 安装完成！${NC}"
+    echo -e "${GREEN}dashGO Agent 安装完成！${NC}"
     echo "=========================================="
     echo ""
     echo "版本: $VERSION"
@@ -417,13 +421,13 @@ show_status() {
         echo "  查看 Agent 状态: rc-service ${SERVICE_NAME} status"
         echo "  查看 Agent 日志: tail -f /var/log/${SERVICE_NAME}.log"
         echo "  重启 Agent: rc-service ${SERVICE_NAME} restart"
-        echo "  手动触发更新: ${INSTALL_DIR}/xboard-agent -panel ${PANEL_URL} -token ${TOKEN} -update"
+        echo "  手动触发更新: ${INSTALL_DIR}/dashgo-agent -panel ${PANEL_URL} -token ${TOKEN} -update"
         echo "  查看 sing-box 状态: rc-service sing-box status"
     else
         echo "  查看 Agent 状态: systemctl status ${SERVICE_NAME}"
         echo "  查看 Agent 日志: journalctl -u ${SERVICE_NAME} -f"
         echo "  重启 Agent: systemctl restart ${SERVICE_NAME}"
-        echo "  手动触发更新: ${INSTALL_DIR}/xboard-agent -panel ${PANEL_URL} -token ${TOKEN} -update"
+        echo "  手动触发更新: ${INSTALL_DIR}/dashgo-agent -panel ${PANEL_URL} -token ${TOKEN} -update"
         echo "  查看 sing-box 状态: systemctl status sing-box"
     fi
     echo ""
@@ -441,7 +445,7 @@ show_status() {
 
 # 卸载函数
 uninstall() {
-    log_info "卸载 XBoard Agent..."
+    log_info "卸载 dashGO Agent..."
     
     if [ "$OS" = "alpine" ]; then
         rc-service ${SERVICE_NAME} stop 2>/dev/null || true
@@ -456,7 +460,7 @@ uninstall() {
     
     rm -rf "$INSTALL_DIR"
     
-    log_info "XBoard Agent 已卸载"
+    log_info "dashGO Agent 已卸载"
     
     read -p "是否同时卸载 sing-box? [y/N]: " uninstall_singbox
     if [ "$uninstall_singbox" = "y" ] || [ "$uninstall_singbox" = "Y" ]; then
@@ -480,7 +484,7 @@ uninstall() {
 main() {
     echo ""
     echo "=========================================="
-    echo "   XBoard Agent 安装脚本 $VERSION"
+    echo "   dashGO Agent 安装脚本 $VERSION"
     echo "=========================================="
     echo ""
     

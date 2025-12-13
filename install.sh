@@ -4,13 +4,13 @@
 # 支持面板和 Agent 的完整部署
 # 支持预编译二进制文件和源码构建两种方式
 # 预编译文件下载地址: https://download.sharon.wiki/
-# 用法: curl -sL https://raw.githubusercontent.com/ZYHUO/dashGO/main/install.sh | bash
+# 用法: curl -sL https://raw.githubusercontent.com/ZYHUO/dashgo/main/install.sh | bash
 # 或者: bash install.sh [panel|agent|all]
 
 set -e
 
 VERSION='v1.2.0'
-GITHUB_REPO="ZYHUO/dashGO"
+GITHUB_REPO="ZYHUO/dashgo"
 GH_PROXY='https://hub.glowp.xyz/'
 INSTALL_DIR="/opt/dashgo"
 AGENT_DIR="/opt/dashgo-agent"
@@ -338,10 +338,10 @@ install_panel() {
             if wget -q --show-progress -O dashgo.zip "$REPO_URL"; then
                 unzip -q dashgo.zip
                 # 只复制必要的配置文件和静态资源
-                cp -r dashGO-main/configs "$INSTALL_DIR/" 2>/dev/null || mkdir -p "$INSTALL_DIR/configs"
-                cp -r dashGO-main/web/dist "$INSTALL_DIR/web/" 2>/dev/null || mkdir -p "$INSTALL_DIR/web/dist"
-                cp dashGO-main/docker-compose.yaml "$INSTALL_DIR/" 2>/dev/null || true
-                cp dashGO-main/Dockerfile "$INSTALL_DIR/" 2>/dev/null || true
+                cp -r dashgo-main/configs "$INSTALL_DIR/" 2>/dev/null || mkdir -p "$INSTALL_DIR/configs"
+                cp -r dashgo-main/web/dist "$INSTALL_DIR/web/" 2>/dev/null || mkdir -p "$INSTALL_DIR/web/dist"
+                cp dashgo-main/docker-compose.yaml "$INSTALL_DIR/" 2>/dev/null || true
+                cp dashgo-main/Dockerfile "$INSTALL_DIR/" 2>/dev/null || true
             fi
         fi
     fi
@@ -367,7 +367,7 @@ install_panel() {
             exit 1
         fi
         unzip -q dashgo.zip
-        cp -r dashGO-main/* "$INSTALL_DIR/"
+        cp -r dashgo-main/* "$INSTALL_DIR/"
     fi
     
     cd "$INSTALL_DIR"
@@ -855,10 +855,10 @@ build_agent_from_source() {
     fi
     
     cd "$TEMP_DIR"
-    git clone --depth 1 "${GH_PROXY}https://github.com/${GITHUB_REPO}.git" dashGO 2>/dev/null || \
-    git clone --depth 1 "https://github.com/${GITHUB_REPO}.git" dashGO
+    git clone --depth 1 "${GH_PROXY}https://github.com/${GITHUB_REPO}.git" dashgo 2>/dev/null || \
+    git clone --depth 1 "https://github.com/${GITHUB_REPO}.git" dashgo
     
-    cd dashGO/agent
+    cd dashgo/agent
     go build -ldflags="-s -w" -o "$AGENT_DIR/dashgo-agent" .
     
     log_info "从源码构建完成"
@@ -1074,7 +1074,7 @@ update_panel() {
         log_info "更新文件..."
         rsync -av --exclude='configs/config.yaml' --exclude='config.yaml' --exclude='.env' \
             --exclude='data' --exclude='storage' --exclude='ssl' --exclude='web/dist' \
-            dashGO-main/* "$INSTALL_DIR/"
+            dashgo-main/* "$INSTALL_DIR/"
         
         cd "$INSTALL_DIR"
         

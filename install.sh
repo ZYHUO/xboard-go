@@ -2,6 +2,8 @@
 
 # dashGO 一键安装脚本
 # 支持面板和 Agent 的完整部署
+# 支持预编译二进制文件和源码构建两种方式
+# 预编译文件下载地址: https://download.sharon.wiki/
 # 用法: curl -sL https://raw.githubusercontent.com/ZYHUO/dashGO/main/install.sh | bash
 # 或者: bash install.sh [panel|agent|all]
 
@@ -302,14 +304,14 @@ install_docker_compose() {
 install_panel() {
     log_info "开始安装 dashGO 面板..."
     
-    # 询问是否构建前端
+    # 询问安装方式
     echo ""
-    read -p "是否需要构建前端? (需要 Node.js) [Y/n]: " build_fe
-    build_fe=${build_fe:-Y}
-    
-    if [ "$build_fe" = "Y" ] || [ "$build_fe" = "y" ]; then
-        install_nodejs
-    fi
+    echo "请选择安装方式:"
+    echo "  1) 使用预编译版本 (推荐)"
+    echo "  2) 从源码构建"
+    echo ""
+    read -p "请选择 [1-2]: " install_type
+    install_type=${install_type:-1}
     
     install_docker
     install_docker_compose
@@ -318,29 +320,70 @@ install_panel() {
     mkdir -p "$TEMP_DIR"
     cd "$TEMP_DIR"
     
-    # 下载源码
-    local REPO_URL="${GH_PROXY}https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip"
-    
-    log_info "下载源码..."
-    if ! wget -q --show-progress -O dashgo.zip "$REPO_URL"; then
-        log_error "下载失败"
-        exit 1
+    if [ "$install_type" = "1" ]; then
+        # 使用预编译版本
+        log_info "下载预编译面板..."
+        local PANEL_URL="https://download.sharon.wiki/server/dashgo-server-linux-${ARCH}"
+        
+        if ! wget -q --show-progress -O "$INSTALL_DIR/dashgo-server" "$PANEL_URL"; then
+            log_warn "下载预编译版本失败，切换到源码构建..."
+            install_type="2"
+        else
+            chmod +x "$INSTALL_DIR/dashgo-server"
+            log_info "预编译面板下载完成"
+            
+            # 下载配置模板和静态文件
+            local REPO_URL="${GH_PROXY}https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip"
+            log_info "下载配置模板..."
+            if wget -q --show-progress -O dashgo.zip "$REPO_URL"; then
+                unzip -q dashgo.zip
+                # 只复制必要的配置文件和静态资源
+                cp -r dashGO-main/configs "$INSTALL_DIR/" 2>/dev/null || mkdir -p "$INSTALL_DIR/configs"
+                cp -r dashGO-main/web/dist "$INSTALL_DIR/web/" 2>/dev/null || mkdir -p "$INSTALL_DIR/web/dist"
+                cp dashGO-main/docker-compose.yaml "$INSTALL_DIR/" 2>/dev/null || true
+                cp dashGO-main/Dockerfile "$INSTALL_DIR/" 2>/dev/null || true
+            fi
+        fi
     fi
-    unzip -q dashgo.zip
-    cp -r dashGO-main/* "$INSTALL_DIR/"
+    
+    if [ "$install_type" = "2" ]; then
+        # 从源码构建
+        log_info "从源码构建..."
+        
+        # 询问是否构建前端
+        read -p "是否需要构建前端? (需要 Node.js) [Y/n]: " build_fe
+        build_fe=${build_fe:-Y}
+        
+        if [ "$build_fe" = "Y" ] || [ "$build_fe" = "y" ]; then
+            install_nodejs
+        fi
+        
+        # 下载源码
+        local REPO_URL="${GH_PROXY}https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip"
+        
+        log_info "下载源码..."
+        if ! wget -q --show-progress -O dashgo.zip "$REPO_URL"; then
+            log_error "下载失败"
+            exit 1
+        fi
+        unzip -q dashgo.zip
+        cp -r dashGO-main/* "$INSTALL_DIR/"
+    fi
     
     cd "$INSTALL_DIR"
     
-    # 构建前端
-    if [ "$build_fe" = "Y" ] || [ "$build_fe" = "y" ]; then
-        if [ -d "web" ]; then
-            build_frontend "$INSTALL_DIR/web"
+    # 处理前端构建 (仅源码构建时)
+    if [ "$install_type" = "2" ]; then
+        if [ "$build_fe" = "Y" ] || [ "$build_fe" = "y" ]; then
+            if [ -d "web" ]; then
+                build_frontend "$INSTALL_DIR/web"
+            else
+                log_warn "未找到 web 目录，跳过前端构建"
+            fi
         else
-            log_warn "未找到 web 目录，跳过前端构建"
+            log_info "跳过前端构建"
+            log_hint "如需前端，请手动构建: cd $INSTALL_DIR/web && npm install && npm run build"
         fi
-    else
-        log_info "跳过前端构建"
-        log_hint "如需前端，请手动构建: cd $INSTALL_DIR/web && npm install && npm run build"
     fi
     
     # 创建必要目录
@@ -460,6 +503,28 @@ EOF
 
 # 创建 Docker Compose 文件
 create_docker_compose() {
+    # 检查是否存在预编译二进制文件
+    if [ -f "dashgo-server" ]; then
+        # 为预编译版本创建简单的 Dockerfile
+        cat > Dockerfile << 'EOF'
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates tzdata
+
+WORKDIR /app
+
+COPY dashgo-server /app/dashgo-server
+COPY configs/config.yaml /app/config.yaml
+COPY web/dist /app/web/dist
+
+RUN chmod +x /app/dashgo-server
+
+EXPOSE 8080
+
+CMD ["/app/dashgo-server"]
+EOF
+    fi
+
     cat > docker-compose.yaml << 'EOF'
 version: '3.8'
 
@@ -470,8 +535,9 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./config.yaml:/app/config.yaml
-      - ./storage:/app/storage
+      - ./configs/config.yaml:/app/config.yaml
+      - ./data:/app/data
+      - ./web/dist:/app/web/dist
     depends_on:
       mysql:
         condition: service_healthy
@@ -755,8 +821,8 @@ install_agent() {
     mkdir -p "$TEMP_DIR"
     cd "$TEMP_DIR"
     
-    # 下载 Agent
-    local AGENT_URL="${GH_PROXY}https://github.com/${GITHUB_REPO}/releases/download/1.1/dashgo-agent-linux-${ARCH}"
+    # 下载 Agent (使用新的下载地址)
+    local AGENT_URL="https://download.sharon.wiki/agent/dashgo-agent-linux-${ARCH}"
     
     log_info "下载 Agent..."
     if ! wget -q --show-progress -O "$AGENT_DIR/dashgo-agent" "$AGENT_URL"; then
@@ -943,9 +1009,14 @@ update_panel() {
         exit 1
     fi
     
-    # 询问是否重新构建前端
+    # 询问更新方式
     echo ""
-    read -p "是否重新构建前端? [y/N]: " rebuild_fe
+    echo "请选择更新方式:"
+    echo "  1) 使用预编译版本 (推荐)"
+    echo "  2) 从源码更新"
+    echo ""
+    read -p "请选择 [1-2]: " update_type
+    update_type=${update_type:-1}
     
     cd "$INSTALL_DIR"
     
@@ -964,20 +1035,66 @@ update_panel() {
     log_info "停止服务..."
     docker compose down
     
-    # 下载新版本
-    mkdir -p "$TEMP_DIR"
-    cd "$TEMP_DIR"
+    if [ "$update_type" = "1" ]; then
+        # 使用预编译版本更新
+        log_info "下载预编译面板..."
+        mkdir -p "$TEMP_DIR"
+        cd "$TEMP_DIR"
+        
+        local PANEL_URL="https://download.sharon.wiki/server/dashgo-server-linux-${ARCH}"
+        
+        if wget -q --show-progress -O dashgo-server "$PANEL_URL"; then
+            # 备份旧版本
+            mv "$INSTALL_DIR/dashgo-server" "$INSTALL_DIR/dashgo-server.bak" 2>/dev/null || true
+            # 安装新版本
+            mv dashgo-server "$INSTALL_DIR/dashgo-server"
+            chmod +x "$INSTALL_DIR/dashgo-server"
+            log_info "预编译面板更新完成"
+        else
+            log_warn "下载预编译版本失败，切换到源码更新..."
+            update_type="2"
+        fi
+    fi
     
-    log_info "下载最新版本..."
-    local REPO_URL="${GH_PROXY}https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip"
-    wget -q --show-progress -O dashgo.zip "$REPO_URL"
-    unzip -q dashgo.zip
-    
-    # 更新文件 (保留配置和数据)
-    log_info "更新文件..."
-    rsync -av --exclude='configs/config.yaml' --exclude='config.yaml' --exclude='.env' \
-        --exclude='data' --exclude='storage' --exclude='ssl' --exclude='web/dist' \
-        dashGO-main/* "$INSTALL_DIR/"
+    if [ "$update_type" = "2" ]; then
+        # 从源码更新
+        # 询问是否重新构建前端
+        read -p "是否重新构建前端? [y/N]: " rebuild_fe
+        
+        # 下载新版本
+        mkdir -p "$TEMP_DIR"
+        cd "$TEMP_DIR"
+        
+        log_info "下载最新版本..."
+        local REPO_URL="${GH_PROXY}https://github.com/${GITHUB_REPO}/archive/refs/heads/main.zip"
+        wget -q --show-progress -O dashgo.zip "$REPO_URL"
+        unzip -q dashgo.zip
+        
+        # 更新文件 (保留配置和数据)
+        log_info "更新文件..."
+        rsync -av --exclude='configs/config.yaml' --exclude='config.yaml' --exclude='.env' \
+            --exclude='data' --exclude='storage' --exclude='ssl' --exclude='web/dist' \
+            dashGO-main/* "$INSTALL_DIR/"
+        
+        cd "$INSTALL_DIR"
+        
+        # 处理前端
+        if [ "$rebuild_fe" = "y" ] || [ "$rebuild_fe" = "Y" ]; then
+            log_info "重新构建前端..."
+            install_nodejs
+            if [ -d "web" ]; then
+                build_frontend "$INSTALL_DIR/web"
+            fi
+        else
+            # 恢复旧的前端构建
+            if [ -d "web/dist.bak" ]; then
+                log_info "恢复旧的前端构建..."
+                mv web/dist.bak web/dist
+            else
+                log_warn "未找到前端构建产物"
+            fi
+        fi
+    fi
     
     cd "$INSTALL_DIR"
     
@@ -990,23 +1107,6 @@ update_panel() {
         mv config.yaml.bak configs/config.yaml
     fi
     mv .env.bak .env 2>/dev/null || true
-    
-    # 处理前端
-    if [ "$rebuild_fe" = "y" ] || [ "$rebuild_fe" = "Y" ]; then
-        log_info "重新构建前端..."
-        install_nodejs
-        if [ -d "web" ]; then
-            build_frontend "$INSTALL_DIR/web"
-        fi
-    else
-        # 恢复旧的前端构建
-        if [ -d "web/dist.bak" ]; then
-            log_info "恢复旧的前端构建..."
-            mv web/dist.bak web/dist
-        else
-            log_warn "未找到前端构建产物"
-        fi
-    fi
     
     # 重新构建并启动
     log_info "重新启动服务..."
@@ -1040,7 +1140,7 @@ update_agent() {
     mkdir -p "$TEMP_DIR"
     cd "$TEMP_DIR"
     
-    local AGENT_URL="${GH_PROXY}https://github.com/${GITHUB_REPO}/releases/download/1.1/dashgo-agent-linux-${ARCH}"
+    local AGENT_URL="https://download.sharon.wiki/agent/dashgo-agent-linux-${ARCH}"
     
     if wget -q --show-progress -O "$AGENT_DIR/dashgo-agent.new" "$AGENT_URL"; then
         mv "$AGENT_DIR/dashgo-agent.new" "$AGENT_DIR/dashgo-agent"

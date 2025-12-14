@@ -20,7 +20,7 @@ admin123456
 ### 安装
 
 ```bash
- curl -sSL https://raw.githubusercontent.com/ZYHUO/dashGO/refs/heads/main/install.sh -o install.sh && bash install.sh
+curl -sSL https://raw.githubusercontent.com/ZYHUO/dashGO/refs/heads/main/install.sh -o install.sh && bash install.sh
 ```
 
 ### 安装选项

@@ -127,6 +127,14 @@ func main() {
 	}
 
 	r := gin.Default()
+	
+	// 信任所有代理（nginx、CDN 等）
+	// 这样 Gin 才能正确处理 X-Forwarded-* 头
+	r.SetTrustedProxies(nil) // nil 表示信任所有代理
+	
+	// 或者只信任特定的代理 IP（更安全）
+	// r.SetTrustedProxies([]string{"127.0.0.1", "::1", "172.16.0.0/12", "10.0.0.0/8"})
+	
 	handler.RegisterRoutes(r, services, cfg)
 
 	log.Printf("Server starting on %s", cfg.App.Listen)

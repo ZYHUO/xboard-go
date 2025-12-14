@@ -910,13 +910,18 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
     
-    # 日志格式
+    # 日志格式（包含真实 IP）
     log_format main '$remote_addr - $remote_user [$time_local] "$request" '
                     '$status $body_bytes_sent "$http_referer" '
-                    '"$http_user_agent"';
+                    '"$http_user_agent" "$http_x_forwarded_for"';
     
     access_log /var/log/nginx/access.log main;
     error_log /var/log/nginx/error.log warn;
+    
+    # 真实 IP 设置（支持 CDN）
+    set_real_ip_from 0.0.0.0/0;
+    real_ip_header X-Forwarded-For;
+    real_ip_recursive on;
     
     sendfile        on;
     keepalive_timeout  65;
@@ -956,13 +961,18 @@ http {
             proxy_set_header Upgrade $http_upgrade;
             proxy_set_header Connection "upgrade";
             
-            # 正确传递请求头
-            proxy_set_header Host $host;
+            # 正确传递请求头（支持 CDN）
+            proxy_set_header Host $http_host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Forwarded-Host $http_host;
             proxy_set_header X-Forwarded-Port $server_port;
+            
+            # 传递 CDN 相关头（如 Cloudflare）
+            proxy_set_header CF-Connecting-IP $http_cf_connecting_ip;
+            proxy_set_header CF-Ray $http_cf_ray;
+            proxy_set_header CF-Visitor $http_cf_visitor;
             
             # 超时设置
             proxy_connect_timeout 60s;

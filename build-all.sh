@@ -76,7 +76,7 @@ build_server_docker() {
         -v "$PWD":/app -w /app \
         golang:1.22-alpine sh -c "
         apk add --no-cache gcc musl-dev && \
-        CGO_ENABLED=1 go build -ldflags='-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}' \
+        CGO_ENABLED=1 go build -trimpath -ldflags='-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}' \
         -o dashgo-server-linux-amd64 ./cmd/server
     "
     mv dashgo-server-linux-amd64 ${SERVER_OUTPUT_DIR}/
@@ -88,7 +88,7 @@ build_server_docker() {
         -v "$PWD":/app -w /app \
         golang:1.22-alpine sh -c "
         apk add --no-cache gcc musl-dev && \
-        CGO_ENABLED=1 go build -ldflags='-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}' \
+        CGO_ENABLED=1 go build -trimpath -ldflags='-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}' \
         -o dashgo-server-linux-arm64 ./cmd/server
     "
     mv dashgo-server-linux-arm64 ${SERVER_OUTPUT_DIR}/
@@ -110,14 +110,14 @@ build_server() {
         # 本地架构，启用 CGO 支持 SQLite
         echo -e "${GREEN}  → 启用 CGO (支持 SQLite)${NC}"
         CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
-            -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+            -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
             -o ${SERVER_OUTPUT_DIR}/dashgo-server-linux-amd64 \
             ./cmd/server
     else
         # 交叉编译，禁用 CGO（仅支持 MySQL）
         echo -e "${YELLOW}  → 交叉编译，禁用 CGO (仅支持 MySQL)${NC}"
         CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-            -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+            -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
             -o ${SERVER_OUTPUT_DIR}/dashgo-server-linux-amd64 \
             ./cmd/server
     fi
@@ -128,14 +128,14 @@ build_server() {
         # 本地架构，启用 CGO 支持 SQLite
         echo -e "${GREEN}  → 启用 CGO (支持 SQLite)${NC}"
         CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build \
-            -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+            -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
             -o ${SERVER_OUTPUT_DIR}/dashgo-server-linux-arm64 \
             ./cmd/server
     else
         # 交叉编译，禁用 CGO（仅支持 MySQL）
         echo -e "${YELLOW}  → 交叉编译，禁用 CGO (仅支持 MySQL)${NC}"
         CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build \
-            -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+            -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
             -o ${SERVER_OUTPUT_DIR}/dashgo-server-linux-arm64 \
             ./cmd/server
     fi
@@ -143,21 +143,21 @@ build_server() {
     # 构建 Windows amd64
     echo -e "${YELLOW}构建 Server (Windows amd64)...${NC}"
     CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
-        -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+        -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
         -o ${SERVER_OUTPUT_DIR}/dashgo-server-windows-amd64.exe \
         ./cmd/server
     
     # 构建 macOS amd64
     echo -e "${YELLOW}构建 Server (macOS amd64)...${NC}"
     CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build \
-        -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+        -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
         -o ${SERVER_OUTPUT_DIR}/dashgo-server-darwin-amd64 \
         ./cmd/server
     
     # 构建 macOS arm64 (Apple Silicon)
     echo -e "${YELLOW}构建 Server (macOS arm64)...${NC}"
     CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build \
-        -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+        -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
         -o ${SERVER_OUTPUT_DIR}/dashgo-server-darwin-arm64 \
         ./cmd/server
     
@@ -173,49 +173,49 @@ build_agent() {
     # Linux amd64
     echo -e "${YELLOW}构建 Agent (Linux amd64)...${NC}"
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-        -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+        -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
         -o ../${AGENT_OUTPUT_DIR}/dashgo-agent-linux-amd64 .
     
     # Linux arm64
     echo -e "${YELLOW}构建 Agent (Linux arm64)...${NC}"
     CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build \
-        -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+        -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
         -o ../${AGENT_OUTPUT_DIR}/dashgo-agent-linux-arm64 .
     
     # Linux 386
     echo -e "${YELLOW}构建 Agent (Linux 386)...${NC}"
     CGO_ENABLED=0 GOOS=linux GOARCH=386 go build \
-        -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+        -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
         -o ../${AGENT_OUTPUT_DIR}/dashgo-agent-linux-386 .
     
     # Windows amd64
     echo -e "${YELLOW}构建 Agent (Windows amd64)...${NC}"
     CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build \
-        -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+        -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
         -o ../${AGENT_OUTPUT_DIR}/dashgo-agent-windows-amd64.exe .
     
     # Windows 386
     echo -e "${YELLOW}构建 Agent (Windows 386)...${NC}"
     CGO_ENABLED=0 GOOS=windows GOARCH=386 go build \
-        -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+        -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
         -o ../${AGENT_OUTPUT_DIR}/dashgo-agent-windows-386.exe .
     
     # macOS amd64
     echo -e "${YELLOW}构建 Agent (macOS amd64)...${NC}"
     CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build \
-        -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+        -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
         -o ../${AGENT_OUTPUT_DIR}/dashgo-agent-darwin-amd64 .
     
     # macOS arm64 (Apple Silicon)
     echo -e "${YELLOW}构建 Agent (macOS arm64)...${NC}"
     CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build \
-        -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+        -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
         -o ../${AGENT_OUTPUT_DIR}/dashgo-agent-darwin-arm64 .
     
     # FreeBSD amd64
     echo -e "${YELLOW}构建 Agent (FreeBSD amd64)...${NC}"
     CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 go build \
-        -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+        -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
         -o ../${AGENT_OUTPUT_DIR}/dashgo-agent-freebsd-amd64 .
     
     cd ..
@@ -229,13 +229,13 @@ build_migrate() {
     
     # Linux amd64
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-        -ldflags="-s -w" \
+        -trimpath -ldflags="-s -w" \
         -o ${SERVER_OUTPUT_DIR}/migrate-linux-amd64 \
         ./cmd/migrate
     
     # Linux arm64
     CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build \
-        -ldflags="-s -w" \
+        -trimpath -ldflags="-s -w" \
         -o ${SERVER_OUTPUT_DIR}/migrate-linux-arm64 \
         ./cmd/migrate
     

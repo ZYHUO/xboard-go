@@ -2,10 +2,11 @@
 
 一个现代化的代理面板管理系统，基于 Go + Vue 3 构建。
 
-[測試站点](https://misaka.cfd/) 
+~~[測試站点](https://misaka.cfd/) 
 帐密
 admin@example.com
-admin123456
+admin123456~~
+demo boom
 ## 特性
 
 - 🚀 **高性能**：Go 后端，Vue 3 前端
@@ -46,14 +47,6 @@ curl -sSL https://raw.githubusercontent.com/ZYHUO/dashGO/refs/heads/main/install
    - Web 访问端口（HTTP: 80 / HTTPS: 443）
    - 管理员邮箱和密码
 
-### 默认账号
-
-```
-邮箱：admin@example.com
-密码：admin123456
-```
-
-**⚠️ 首次登录后请立即修改密码！**
 
 ## 系统要求
 
@@ -306,5 +299,6 @@ MIT License
 ---
 
 **⭐ 如果这个项目对你有帮助，请给个 Star！**
-**Give me a cup of coffee** 0x728426bb2d4121da5316f795017cbf068e0db0d0 polygon
+
+**And give me a cup of coffee🎇** 0x728426bb2d4121da5316f795017cbf068e0db0d0 polygon
 0x728426bb2d4121da5316f795017cbf068e0db0d0 xlayer

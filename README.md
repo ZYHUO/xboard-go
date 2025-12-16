@@ -235,37 +235,18 @@ dashGO/
 - ✅ SQL 注入防护（GORM 参数化查询）
 - ✅ XSS 防护（输入清理 + CSP）
 - ✅ JWT Token 认证
-- ✅ 密码 bcrypt 加密
-- ✅ 管理员权限控制
-- ✅ 安全响应头
-- ✅ CORS 配置
-- ✅ IP 白名单（可选）
 - ✅ HTTPS/TLS 加密（可选）
-- ✅ CDN 支持（Cloudflare 等）
 
-详见 [SECURITY.md](SECURITY.md)
 
-## 常见问题
+## FAQ
 
-### 1. 使用域名访问超时（ERR_TIMED_OUT）
+### 1. 主播主播你的dashgo为什么不能用洗地恩
 
-**原因**：Cloudflare CDN 使用 HTTPS，但后端只有 HTTP
-
-**解决方案**：
-- **方案 A**：启用 HTTPS（推荐）
-  ```bash
-  bash install.sh panel
-  # 选择启用 HTTPS，使用 Cloudflare Origin Certificate
-  ```
-- **方案 B**：Cloudflare 设置 SSL/TLS 为 **Flexible** 模式
+**原因**：主播也不知道 下个版本修（
 
 ### 2. 未登录用户访问根目录报错
 
 已修复：未登录用户访问 `/` 会自动重定向到 `/login`
-
-### 3. 日志中出现 "record not found"
-
-已优化：GORM 日志级别调整为 Error，正常的查询不存在记录不会再记录日志
 
 ### 4. 防火墙/安全组配置
 

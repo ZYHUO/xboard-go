@@ -20,24 +20,24 @@ import (
 // 调试版本的 Agent，增加详细日志输出
 
 var (
-	panelURL            string
-	token               string
-	configPath          string
-	singboxBin          string
-	triggerUpdate       bool
-	autoUpdate          bool
-	updateCheckInterval int
-	debugMode           bool
+	debugPanelURL            string
+	debugToken               string
+	debugConfigPath          string
+	debugSingboxBin          string
+	debugTriggerUpdate       bool
+	debugAutoUpdate          bool
+	debugUpdateCheckInterval int
+	debugMode                bool
 )
 
 func init() {
-	flag.StringVar(&panelURL, "panel", "", "面板地址 (如 https://your-panel.com)")
-	flag.StringVar(&token, "token", "", "主机 Token")
-	flag.StringVar(&configPath, "config", "/etc/sing-box/config.json", "sing-box 配置文件路径")
-	flag.StringVar(&singboxBin, "singbox", "sing-box", "sing-box 可执行文件路径")
-	flag.BoolVar(&triggerUpdate, "update", false, "手动触发更新")
-	flag.BoolVar(&autoUpdate, "auto-update", true, "是否启用自动更新检查")
-	flag.IntVar(&updateCheckInterval, "update-check-interval", 3600, "更新检查间隔（秒）")
+	flag.StringVar(&debugPanelURL, "panel", "", "面板地址 (如 https://your-panel.com)")
+	flag.StringVar(&debugToken, "token", "", "主机 Token")
+	flag.StringVar(&debugConfigPath, "config", "/etc/sing-box/config.json", "sing-box 配置文件路径")
+	flag.StringVar(&debugSingboxBin, "singbox", "sing-box", "sing-box 可执行文件路径")
+	flag.BoolVar(&debugTriggerUpdate, "update", false, "手动触发更新")
+	flag.BoolVar(&debugAutoUpdate, "auto-update", true, "是否启用自动更新检查")
+	flag.IntVar(&debugUpdateCheckInterval, "update-check-interval", 3600, "更新检查间隔（秒）")
 	flag.BoolVar(&debugMode, "debug", false, "启用调试模式")
 }
 
@@ -55,7 +55,7 @@ func checkSystemEnvironment() error {
 	}
 	
 	// 检查 sing-box 可执行文件
-	singboxPath, err := exec.LookPath(singboxBin)
+	singboxPath, err := exec.LookPath(debugSingboxBin)
 	if err != nil {
 		fmt.Printf("[ERROR] 找不到 sing-box 可执行文件: %v\n", err)
 		return fmt.Errorf("sing-box not found: %w", err)
@@ -63,7 +63,7 @@ func checkSystemEnvironment() error {
 	fmt.Printf("[INFO] 找到 sing-box: %s\n", singboxPath)
 	
 	// 测试 sing-box 版本
-	cmd := exec.Command(singboxBin, "version")
+	cmd := exec.Command(debugSingboxBin, "version")
 	output, err := cmd.Output()
 	if err != nil {
 		fmt.Printf("[ERROR] 无法获取 sing-box 版本: %v\n", err)
@@ -82,8 +82,8 @@ func checkSystemEnvironment() error {
 	}
 	
 	// 检查配置文件权限
-	if _, err := os.Stat(configPath); err == nil {
-		info, _ := os.Stat(configPath)
+	if _, err := os.Stat(debugConfigPath); err == nil {
+		info, _ := os.Stat(debugConfigPath)
 		if debugMode || os.Getenv("DEBUG") != "" {
 			fmt.Printf("[DEBUG] 配置文件权限: %v\n", info.Mode())
 		}
@@ -115,7 +115,7 @@ func safeAPIRequest(method, url string, body interface{}, timeout time.Duration)
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", token)
+	req.Header.Set("Authorization", debugToken)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", fmt.Sprintf("XBoard-Agent/%s (%s/%s)", Version, runtime.GOOS, runtime.GOARCH))
 
@@ -303,10 +303,10 @@ func NewDebugAgent() *DebugAgent {
 	diagnosticTool := NewDiagnosticTool(logger, systemChecker)
 	
 	agent := &DebugAgent{
-		panelURL:       panelURL,
-		token:          token,
-		configPath:     configPath,
-		singboxBin:     singboxBin,
+		panelURL:       debugPanelURL,
+		token:          debugToken,
+		configPath:     debugConfigPath,
+		singboxBin:     debugSingboxBin,
 		httpClient:     &http.Client{Timeout: 30 * time.Second},
 		logger:         logger,
 		systemChecker:  systemChecker,
@@ -625,7 +625,7 @@ func (a *DebugAgent) Run() {
 func main() {
 	flag.Parse()
 
-	if panelURL == "" || token == "" {
+	if debugPanelURL == "" || debugToken == "" {
 		fmt.Println("用法: xboard-agent-debug -panel <面板地址> -token <主机Token>")
 		fmt.Println()
 		fmt.Println("参数:")

@@ -170,12 +170,5 @@ type ToolAvailability struct {
 	Alternative string `json:"alternative"` // 替代工具或方法
 }
 
-// UpdateInfo 更新信息（从现有代码引用）
-type UpdateInfo struct {
-	LatestVersion string `json:"latest_version"`
-	DownloadURL   string `json:"download_url"`
-	SHA256        string `json:"sha256"`
-	FileSize      int64  `json:"file_size"`
-	Strategy      string `json:"strategy"`
-	ReleaseNotes  string `json:"release_notes"`
-}
+// 注意: UpdateInfo 类型已在 update_checker.go 中定义
+// 这里不再重复定义以避免编译冲突

@@ -70,6 +70,24 @@ agent-darwin-arm64:
 
 agent-all: agent-linux-amd64 agent-linux-arm64 agent-darwin-amd64 agent-darwin-arm64
 
+# Alpine Debug Agent builds
+agent-debug-linux-amd64:
+	cd agent && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dashgo-agent-debug-linux-amd64 \
+		main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go \
+		alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go
+
+agent-debug-linux-arm64:
+	cd agent && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dashgo-agent-debug-linux-arm64 \
+		main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go \
+		alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go
+
+agent-debug-linux-386:
+	cd agent && CGO_ENABLED=0 GOOS=linux GOARCH=386 $(GOBUILD) $(LDFLAGS) -o dashgo-agent-debug-linux-386 \
+		main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go \
+		alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go
+
+agent-debug-all: agent-debug-linux-amd64 agent-debug-linux-arm64 agent-debug-linux-386
+
 # Database migrations
 migrate:
 	@bash migrate.sh up
@@ -96,6 +114,10 @@ build-migrate:
 # Release (build all binaries)
 release: build-all agent-all build-migrate
 	@echo "Release binaries built successfully"
+
+# Release with Alpine debug versions
+release-debug: build-all agent-all agent-debug-all build-migrate
+	@echo "Release binaries (including Alpine debug) built successfully"
 
 # Local installation
 install-dev:
@@ -141,7 +163,9 @@ help:
 	@echo "  make build-all          - Build for all platforms"
 	@echo "  make agent              - Build agent binary"
 	@echo "  make agent-all          - Build agent for all platforms"
+	@echo "  make agent-debug-all    - Build Alpine debug agent for all platforms"
 	@echo "  make release            - Build all release binaries"
+	@echo "  make release-debug      - Build all release binaries + Alpine debug"
 	@echo ""
 	@echo "Run Commands:"
 	@echo "  make run                - Run server"

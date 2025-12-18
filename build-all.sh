@@ -285,6 +285,46 @@ build_agent() {
     echo -e "${GREEN}✓ Agent 构建完成${NC}"
 }
 
+# 构建 Alpine 调试版本 Agent
+build_agent_debug() {
+    echo -e "${YELLOW}开始构建 Alpine 调试版本 Agent...${NC}"
+    
+    cd agent
+    
+    # Linux amd64 调试版本
+    echo -e "${YELLOW}构建 Agent Debug (Linux amd64)...${NC}"
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+        -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+        -o ../${AGENT_OUTPUT_DIR}/dashgo-agent-debug-linux-amd64 \
+        main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go \
+        alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go
+    
+    # Linux arm64 调试版本
+    echo -e "${YELLOW}构建 Agent Debug (Linux arm64)...${NC}"
+    CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build \
+        -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+        -o ../${AGENT_OUTPUT_DIR}/dashgo-agent-debug-linux-arm64 \
+        main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go \
+        alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go
+    
+    # Linux 386 调试版本
+    echo -e "${YELLOW}构建 Agent Debug (Linux 386)...${NC}"
+    CGO_ENABLED=0 GOOS=linux GOARCH=386 go build \
+        -trimpath -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.GitCommit=${GIT_COMMIT}" \
+        -o ../${AGENT_OUTPUT_DIR}/dashgo-agent-debug-linux-386 \
+        main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go \
+        alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go
+    
+    # 复制诊断脚本
+    echo -e "${YELLOW}复制诊断脚本...${NC}"
+    cp debug-alpine.sh ../${AGENT_OUTPUT_DIR}/
+    chmod +x ../${AGENT_OUTPUT_DIR}/debug-alpine.sh
+    
+    cd ..
+    
+    echo -e "${GREEN}✓ Alpine 调试版本 Agent 构建完成${NC}"
+}
+
 # 构建 Migrate 工具
 build_migrate() {
     echo -e "${YELLOW}开始构建 Migrate 工具...${NC}"
@@ -354,6 +394,12 @@ Agent Binaries:
 - dashgo-agent-darwin-arm64
 - dashgo-agent-freebsd-amd64
 
+Alpine Debug Agent Binaries:
+- dashgo-agent-debug-linux-amd64
+- dashgo-agent-debug-linux-arm64
+- dashgo-agent-debug-linux-386
+- debug-alpine.sh (diagnostic script)
+
 Tools:
 - migrate-linux-amd64
 - migrate-linux-arm64
@@ -410,11 +456,26 @@ main() {
             clean
             build_agent
             ;;
+        agent-debug)
+            clean
+            build_agent_debug
+            ;;
         all|"")
             clean
             build_frontend
             build_server
             build_agent
+            build_migrate
+            generate_checksums
+            create_version_info
+            show_results
+            ;;
+        all-debug)
+            clean
+            build_frontend
+            build_server
+            build_agent
+            build_agent_debug
             build_migrate
             generate_checksums
             create_version_info
@@ -433,14 +494,16 @@ main() {
         *)
             echo -e "${RED}未知参数: ${1}${NC}"
             echo ""
-            echo "用法: $0 [clean|frontend|server|server-docker|agent|all|all-docker]"
+            echo "用法: $0 [clean|frontend|server|server-docker|agent|agent-debug|all|all-debug|all-docker]"
             echo ""
             echo "  clean         - 仅清理构建文件"
             echo "  frontend      - 仅构建前端"
             echo "  server        - 仅构建 Server (本地编译，当前架构支持 SQLite)"
             echo "  server-docker - 仅构建 Server (Docker 编译，所有架构支持 SQLite)"
             echo "  agent         - 仅构建 Agent (全架构)"
+            echo "  agent-debug   - 仅构建 Alpine 调试版本 Agent"
             echo "  all           - 构建所有组件 (默认，本地编译)"
+            echo "  all-debug     - 构建所有组件 + Alpine 调试版本"
             echo "  all-docker    - 构建所有组件 (Docker 编译，推荐)"
             echo ""
             echo "环境变量:"

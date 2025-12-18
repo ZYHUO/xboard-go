@@ -230,6 +230,46 @@ function Build-Agent {
     Write-Host "✓ Agent 构建完成" -ForegroundColor Green
 }
 
+# 构建 Alpine 调试版本 Agent
+function Build-AgentDebug {
+    Write-Host "开始构建 Alpine 调试版本 Agent..." -ForegroundColor Yellow
+    
+    Push-Location agent
+    
+    $ldflags = "-s -w -X main.Version=$Version -X main.BuildTime=$BUILD_TIME -X main.GitCommit=$GIT_COMMIT"
+    
+    # Linux amd64 调试版本
+    Write-Host "构建 Agent Debug (Linux amd64)..." -ForegroundColor Yellow
+    $env:CGO_ENABLED = "0"
+    $env:GOOS = "linux"
+    $env:GOARCH = "amd64"
+    go build -ldflags="$ldflags" -o "../$AGENT_OUTPUT_DIR/dashgo-agent-debug-linux-amd64" `
+        main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go `
+        alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go
+    
+    # Linux arm64 调试版本
+    Write-Host "构建 Agent Debug (Linux arm64)..." -ForegroundColor Yellow
+    $env:GOARCH = "arm64"
+    go build -ldflags="$ldflags" -o "../$AGENT_OUTPUT_DIR/dashgo-agent-debug-linux-arm64" `
+        main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go `
+        alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go
+    
+    # Linux 386 调试版本
+    Write-Host "构建 Agent Debug (Linux 386)..." -ForegroundColor Yellow
+    $env:GOARCH = "386"
+    go build -ldflags="$ldflags" -o "../$AGENT_OUTPUT_DIR/dashgo-agent-debug-linux-386" `
+        main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go `
+        alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go
+    
+    # 复制诊断脚本
+    Write-Host "复制诊断脚本..." -ForegroundColor Yellow
+    Copy-Item debug-alpine.sh "../$AGENT_OUTPUT_DIR/"
+    
+    Pop-Location
+    
+    Write-Host "✓ Alpine 调试版本 Agent 构建完成" -ForegroundColor Green
+}
+
 # 构建 Migrate 工具
 function Build-Migrate {
     Write-Host "开始构建 Migrate 工具..." -ForegroundColor Yellow
@@ -343,6 +383,10 @@ switch ($Target.ToLower()) {
         Clean
         Build-Agent
     }
+    "agent-debug" {
+        Clean
+        Build-AgentDebug
+    }
     "all" {
         Clean
         Build-Frontend
@@ -353,16 +397,29 @@ switch ($Target.ToLower()) {
         Create-VersionInfo
         Show-Results
     }
+    "all-debug" {
+        Clean
+        Build-Frontend
+        Build-Server
+        Build-Agent
+        Build-AgentDebug
+        Build-Migrate
+        Generate-Checksums
+        Create-VersionInfo
+        Show-Results
+    }
     default {
         Write-Host "未知参数: $Target" -ForegroundColor Red
         Write-Host ""
         Write-Host "用法: .\build-all.ps1 [-Target <target>] [-Version <version>]"
         Write-Host ""
-        Write-Host "  -Target clean     - 仅清理构建文件"
-        Write-Host "  -Target frontend  - 仅构建前端"
-        Write-Host "  -Target server    - 仅构建 Server"
-        Write-Host "  -Target agent     - 仅构建 Agent (全架构)"
-        Write-Host "  -Target all       - 构建所有组件 (默认)"
+        Write-Host "  -Target clean       - 仅清理构建文件"
+        Write-Host "  -Target frontend    - 仅构建前端"
+        Write-Host "  -Target server      - 仅构建 Server"
+        Write-Host "  -Target agent       - 仅构建 Agent (全架构)"
+        Write-Host "  -Target agent-debug - 仅构建 Alpine 调试版本 Agent"
+        Write-Host "  -Target all         - 构建所有组件 (默认)"
+        Write-Host "  -Target all-debug   - 构建所有组件 + Alpine 调试版本"
         Write-Host ""
         Write-Host "  -Version <ver>    - 指定版本号 (默认: 1.0.0)"
         Write-Host ""

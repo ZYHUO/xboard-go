@@ -75,19 +75,19 @@ agent-debug-linux-amd64:
 	cd agent && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dashgo-agent-debug-linux-amd64 \
 		main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go \
 		alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go \
-		update_checker.go security.go
+		update_checker.go security.go security_unix.go
 
 agent-debug-linux-arm64:
 	cd agent && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dashgo-agent-debug-linux-arm64 \
 		main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go \
 		alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go \
-		update_checker.go security.go
+		update_checker.go security.go security_unix.go
 
 agent-debug-linux-386:
 	cd agent && CGO_ENABLED=0 GOOS=linux GOARCH=386 $(GOBUILD) $(LDFLAGS) -o dashgo-agent-debug-linux-386 \
 		main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go \
 		alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go \
-		update_checker.go security.go
+		update_checker.go security.go security_unix.go
 
 agent-debug-all: agent-debug-linux-amd64 agent-debug-linux-arm64 agent-debug-linux-386
 

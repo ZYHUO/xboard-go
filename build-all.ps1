@@ -246,7 +246,7 @@ function Build-AgentDebug {
     go build -ldflags="$ldflags" -o "../$AGENT_OUTPUT_DIR/dashgo-agent-debug-linux-amd64" `
         main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go `
         alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go `
-        update_checker.go security.go
+        update_checker.go security.go security_unix.go
     
     # Linux arm64 调试版本
     Write-Host "构建 Agent Debug (Linux arm64)..." -ForegroundColor Yellow
@@ -254,7 +254,7 @@ function Build-AgentDebug {
     go build -ldflags="$ldflags" -o "../$AGENT_OUTPUT_DIR/dashgo-agent-debug-linux-arm64" `
         main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go `
         alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go `
-        update_checker.go security.go
+        update_checker.go security.go security_unix.go
     
     # Linux 386 调试版本
     Write-Host "构建 Agent Debug (Linux 386)..." -ForegroundColor Yellow
@@ -262,7 +262,7 @@ function Build-AgentDebug {
     go build -ldflags="$ldflags" -o "../$AGENT_OUTPUT_DIR/dashgo-agent-debug-linux-386" `
         main_debug.go debug_logger.go alpine_types.go alpine_system_checker.go `
         alpine_system_checker_unix.go alpine_error_handler.go diagnostic_tool.go version.go `
-        update_checker.go security.go
+        update_checker.go security.go security_unix.go
     
     # 复制诊断脚本
     Write-Host "复制诊断脚本..." -ForegroundColor Yellow

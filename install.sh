@@ -148,6 +148,201 @@ check_cdn() {
     fi
 }
 
+# 端口检测功能
+# 使用 netstat 检测端口
+check_port_netstat() {
+    local port=$1
+    local result_file=$2
+    
+    if ! command -v netstat >/dev/null 2>&1; then
+        echo "ERROR:netstat command not found" > "$result_file"
+        return 1
+    fi
+    
+    local output
+    if output=$(netstat -tlnp 2>/dev/null); then
+        if echo "$output" | grep -q ":${port} .*LISTEN"; then
+            local process_info=$(echo "$output" | grep ":${port} .*LISTEN" | awk '{print $NF}' | head -1)
+            echo "OCCUPIED:netstat:${process_info}" > "$result_file"
+            return 1
+        else
+            echo "AVAILABLE:netstat:" > "$result_file"
+            return 0
+        fi
+    else
+        echo "ERROR:netstat execution failed" > "$result_file"
+        return 1
+    fi
+}
+
+# 使用 lsof 检测端口
+check_port_lsof() {
+    local port=$1
+    local result_file=$2
+    
+    if ! command -v lsof >/dev/null 2>&1; then
+        echo "ERROR:lsof command not found" > "$result_file"
+        return 1
+    fi
+    
+    local output
+    if output=$(lsof -i ":${port}" 2>/dev/null); then
+        if echo "$output" | grep -q "LISTEN"; then
+            local process_info=$(echo "$output" | grep "LISTEN" | awk '{print $1"/"$2}' | head -1)
+            echo "OCCUPIED:lsof:${process_info}" > "$result_file"
+            return 1
+        else
+            echo "AVAILABLE:lsof:" > "$result_file"
+            return 0
+        fi
+    else
+        # lsof returns 1 when no processes found, which is normal
+        echo "AVAILABLE:lsof:" > "$result_file"
+        return 0
+    fi
+}
+
+# 使用 ss 检测端口
+check_port_ss() {
+    local port=$1
+    local result_file=$2
+    
+    if ! command -v ss >/dev/null 2>&1; then
+        echo "ERROR:ss command not found" > "$result_file"
+        return 1
+    fi
+    
+    local output
+    if output=$(ss -tlnp 2>/dev/null); then
+        if echo "$output" | grep -q ":${port} .*LISTEN"; then
+            local process_info=$(echo "$output" | grep ":${port} .*LISTEN" | sed 's/.*users:((\([^)]*\)).*/\1/' | head -1)
+            echo "OCCUPIED:ss:${process_info}" > "$result_file"
+            return 1
+        else
+            echo "AVAILABLE:ss:" > "$result_file"
+            return 0
+        fi
+    else
+        echo "ERROR:ss execution failed" > "$result_file"
+        return 1
+    fi
+}
+
+# 健壮的端口检测函数
+robust_port_check() {
+    local port=$1
+    local temp_dir="/tmp/dashgo-port-check-$$"
+    
+    # 验证端口号
+    if [ -z "$port" ] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+        log_error "无效的端口号: $port"
+        return 2
+    fi
+    
+    mkdir -p "$temp_dir"
+    
+    log_info "检测端口 $port 可用性..."
+    
+    # 并行运行三种检测方法
+    check_port_netstat "$port" "$temp_dir/netstat.result" &
+    local netstat_pid=$!
+    
+    check_port_lsof "$port" "$temp_dir/lsof.result" &
+    local lsof_pid=$!
+    
+    check_port_ss "$port" "$temp_dir/ss.result" &
+    local ss_pid=$!
+    
+    # 等待所有检测完成（最多5秒）
+    local timeout=5
+    local elapsed=0
+    while [ $elapsed -lt $timeout ]; do
+        if ! kill -0 $netstat_pid 2>/dev/null && ! kill -0 $lsof_pid 2>/dev/null && ! kill -0 $ss_pid 2>/dev/null; then
+            break
+        fi
+        sleep 0.1
+        elapsed=$((elapsed + 1))
+    done
+    
+    # 强制终止未完成的进程
+    kill $netstat_pid $lsof_pid $ss_pid 2>/dev/null || true
+    wait 2>/dev/null || true
+    
+    # 分析结果
+    local available_count=0
+    local occupied_count=0
+    local error_count=0
+    local process_info=""
+    local methods_used=""
+    
+    for method in netstat lsof ss; do
+        local result_file="$temp_dir/${method}.result"
+        if [ -f "$result_file" ]; then
+            local result=$(cat "$result_file")
+            local status=$(echo "$result" | cut -d: -f1)
+            local method_name=$(echo "$result" | cut -d: -f2)
+            local proc_info=$(echo "$result" | cut -d: -f3)
+            
+            methods_used="${methods_used}${method_name} "
+            
+            case "$status" in
+                "AVAILABLE")
+                    available_count=$((available_count + 1))
+                    log_info "  ✓ $method_name: 端口可用"
+                    ;;
+                "OCCUPIED")
+                    occupied_count=$((occupied_count + 1))
+                    if [ -n "$proc_info" ]; then
+                        process_info="$proc_info"
+                    fi
+                    log_warn "  ✗ $method_name: 端口被占用 ($proc_info)"
+                    ;;
+                "ERROR")
+                    error_count=$((error_count + 1))
+                    log_warn "  ! $method_name: 检测失败 ($proc_info)"
+                    ;;
+            esac
+        else
+            error_count=$((error_count + 1))
+            log_warn "  ! $method: 检测超时"
+        fi
+    done
+    
+    # 清理临时文件
+    rm -rf "$temp_dir" 2>/dev/null || true
+    
+    # 决策逻辑
+    local total_valid=$((available_count + occupied_count))
+    
+    if [ $total_valid -eq 0 ]; then
+        log_error "所有端口检测方法都失败了"
+        log_hint "请手动检查端口 $port 是否被占用"
+        return 2
+    fi
+    
+    # 记录诊断信息
+    log_info "端口检测结果汇总:"
+    log_info "  使用方法: $methods_used"
+    log_info "  可用投票: $available_count"
+    log_info "  占用投票: $occupied_count"
+    log_info "  失败次数: $error_count"
+    
+    if [ $occupied_count -gt $available_count ]; then
+        log_error "端口 $port 被占用"
+        if [ -n "$process_info" ]; then
+            log_error "占用进程: $process_info"
+        fi
+        log_hint "请停止占用端口的进程或选择其他端口"
+        return 1
+    elif [ $available_count -gt 0 ]; then
+        log_success "端口 $port 可用"
+        return 0
+    else
+        log_warn "端口检测结果不确定，建议手动验证"
+        return 2
+    fi
+}
+
 # 安装依赖
 install_deps() {
     log_info "安装系统依赖..."

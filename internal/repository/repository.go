@@ -23,6 +23,7 @@ type Repositories struct {
 	ServerGroup   *ServerGroupRepository
 	UserGroup     *UserGroupRepository
 	Security      *SecurityRepository
+	Port          *PortRepository
 }
 
 func NewRepositories(db *gorm.DB) *Repositories {
@@ -47,5 +48,6 @@ func NewRepositories(db *gorm.DB) *Repositories {
 		ServerGroup:   NewServerGroupRepository(db),
 		UserGroup:     NewUserGroupRepository(db),
 		Security:      NewSecurityRepository(db),
+		Port:          NewPortRepository(db),
 	}
 }

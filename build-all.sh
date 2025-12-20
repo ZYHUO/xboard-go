@@ -88,6 +88,16 @@ build_frontend() {
         echo -e "${GREEN}✓ 依赖已存在，跳过安装${NC}"
     fi
     
+    # 运行类型检查（可选）
+    if [ "${RUN_TYPE_CHECK}" = "true" ]; then
+        echo -e "${YELLOW}运行 TypeScript 类型检查...${NC}"
+        cd web
+        npm run build:check || {
+            echo -e "${YELLOW}警告: 类型检查失败，但继续构建${NC}"
+        }
+        cd ..
+    fi
+    
     # 运行测试（可选）
     if [ "${RUN_TESTS}" = "true" ]; then
         echo -e "${YELLOW}运行前端测试...${NC}"
@@ -510,13 +520,15 @@ main() {
             echo "  all-docker    - 构建所有组件 (Docker 编译，推荐)"
             echo ""
             echo "环境变量:"
-            echo "  VERSION       - 设置版本号 (默认: 1.0.0)"
-            echo "  RUN_TESTS     - 构建前运行测试 (设置为 'true' 启用)"
+            echo "  VERSION         - 设置版本号 (默认: 1.0.0)"
+            echo "  RUN_TESTS       - 构建前运行前端测试 (设置为 'true' 启用)"
+            echo "  RUN_TYPE_CHECK  - 构建前运行 TypeScript 类型检查 (设置为 'true' 启用)"
             echo ""
             echo "示例:"
-            echo "  $0 all                    # 构建所有组件"
-            echo "  VERSION=2.0.0 $0 all      # 指定版本号构建"
-            echo "  RUN_TESTS=true $0 all     # 构建前运行测试"
+            echo "  $0 all                          # 构建所有组件"
+            echo "  VERSION=2.0.0 $0 all            # 指定版本号构建"
+            echo "  RUN_TESTS=true $0 all           # 构建前运行测试"
+            echo "  RUN_TYPE_CHECK=true $0 frontend # 构建前端并进行类型检查"
             exit 1
             ;;
     esac

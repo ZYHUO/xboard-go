@@ -185,7 +185,7 @@ export function useColorSystem() {
     
     // Check for pure black usage
     Object.entries(colorSystem.value).forEach(([scaleName, scale]) => {
-      if (typeof scale === 'object' && 'value' in scale) return // Skip computed refs
+      if (!scale || typeof scale === 'object' && 'value' in scale) return // Skip computed refs
       
       Object.entries(scale as ColorScale | SemanticColors).forEach(([shadeName, color]) => {
         if (typeof color === 'string') {
@@ -195,10 +195,10 @@ export function useColorSystem() {
           if (isTooBlackForLargeAreas(color) && shadeName !== '950') {
             issues.push(`Very dark color in ${scaleName}.${shadeName} may not be suitable for large areas`)
           }
-        } else if (typeof color === 'object') {
+        } else if (typeof color === 'object' && color !== null) {
           // Handle semantic colors
           Object.entries(color).forEach(([subShade, subColor]) => {
-            if (isPureBlack(subColor)) {
+            if (typeof subColor === 'string' && isPureBlack(subColor)) {
               issues.push(`Pure black detected in ${scaleName}.${shadeName}.${subShade}`)
             }
           })
@@ -238,7 +238,7 @@ export function useColorSystem() {
   }
   
   // Get color for current theme
-  const getThemeAwareColor = (lightColor: string, darkColor: string) => {
+  const getThemeAwareColor = (lightColor: string, _darkColor: string) => {
     // This would integrate with the theme system
     // For now, return light color as default
     return lightColor

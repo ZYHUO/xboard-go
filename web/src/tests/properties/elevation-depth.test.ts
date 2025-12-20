@@ -1,310 +1,264 @@
-import { describe, test, expect, beforeEach } from 'vitest'
-import { useElevation, type ElevationLevel, elevationPresets } from '../../composables/useElevation'
+import { describe, it, expect } from 'vitest'
+import { useElevation, useCardElevation, useButtonElevation, componentElevations, zIndexLevels } from '../../composables/useElevation'
 
-// **Feature: modern-ui-redesign, Property 8: 组件层次深度感**
+/**
+ * Property 8: 组件层次深度感
+ * 
+ * 验证需求:
+ * - 3.1: 实现 useElevation composable 管理组件层次
+ * - 4.4: 设计多级阴影系统创建视觉深度
+ */
+describe('Property 8: 组件层次深度感', () => {
+  describe('useElevation 基础功能', () => {
+    it('应该创建具有初始层次的 elevation', () => {
+      const elevation = useElevation(2)
+      
+      expect(elevation.currentLevel.value).toBe(2)
+      expect(elevation.effectiveLevel.value).toBe(2)
+    })
 
-describe('Property 8: Component Elevation Depth', () => {
-  // Generate random component configurations with elevation
-  const generateRandomElevatedComponents = () => {
-    const componentTypes = ['card', 'button', 'modal', 'popover', 'tooltip', 'dropdown']
-    const elevationLevels: ElevationLevel[] = [0, 1, 2, 3, 4, 5, 6]
-    const interactionStates = ['default', 'hover', 'active', 'focus']
-    
-    return Array.from({ length: Math.floor(Math.random() * 15) + 5 }, () => ({
-      type: componentTypes[Math.floor(Math.random() * componentTypes.length)],
-      baseElevation: elevationLevels[Math.floor(Math.random() * elevationLevels.length)],
-      interactionState: interactionStates[Math.floor(Math.random() * interactionStates.length)],
-      interactive: Math.random() > 0.5,
-      id: Math.random().toString(36).substr(2, 9)
-    }))
-  }
-  
-  // Helper to check if shadow creates visual depth
-  const hasShadowDepth = (shadowClass: string): boolean => {
-    const depthShadows = ['shadow-xs', 'shadow-sm', 'shadow-md', 'shadow-lg', 'shadow-xl', 'shadow-2xl']
-    return depthShadows.includes(shadowClass)
-  }
-  
-  // Helper to validate shadow progression
-  const validateShadowProgression = (shadows: string[]): boolean => {
-    const shadowOrder = ['shadow-none', 'shadow-xs', 'shadow-sm', 'shadow-md', 'shadow-lg', 'shadow-xl', 'shadow-2xl']
-    
-    for (let i = 1; i < shadows.length; i++) {
-      const currentIndex = shadowOrder.indexOf(shadows[i])
-      const previousIndex = shadowOrder.indexOf(shadows[i - 1])
+    it('应该提供 7 个层次级别 (0-6)', () => {
+      const levels = [0, 1, 2, 3, 4, 5, 6]
       
-      // Current shadow should be equal or greater than previous
-      if (currentIndex < previousIndex) {
-        return false
-      }
-    }
-    
-    return true
-  }
-  
-  test('components should create visual depth through shadows', () => {
-    // Run 100 iterations as specified in design document
-    for (let iteration = 0; iteration < 100; iteration++) {
-      const components = generateRandomElevatedComponents()
-      
-      components.forEach(comp => {
-        const { shadowClass, isElevated, elevation } = useElevation(comp.baseElevation)
-        
-        // Elevated components should have shadows
-        if (comp.baseElevation > 0) {
-          expect(isElevated.value).toBe(true)
-          expect(hasShadowDepth(shadowClass.value)).toBe(true)
-        }
-        
-        // Non-elevated components should not have shadows
-        if (comp.baseElevation === 0) {
-          expect(isElevated.value).toBe(false)
-          expect(shadowClass.value).toBe('shadow-none')
-        }
-        
-        // Shadow should correspond to elevation level
-        expect(shadowClass.value).toBeDefined()
-        expect(typeof shadowClass.value).toBe('string')
+      levels.forEach(level => {
+        const elevation = useElevation(level as any)
+        expect(elevation.currentLevel.value).toBe(level)
       })
-    }
+    })
+
+    it('应该能够设置层次级别', () => {
+      const elevation = useElevation(0)
+      
+      elevation.setLevel(3)
+      expect(elevation.currentLevel.value).toBe(3)
+      
+      elevation.setLevel(5)
+      expect(elevation.currentLevel.value).toBe(5)
+    })
+
+    it('应该能够提升层次', () => {
+      const elevation = useElevation(2)
+      
+      elevation.raise()
+      expect(elevation.currentLevel.value).toBe(3)
+      
+      elevation.raise(2)
+      expect(elevation.currentLevel.value).toBe(5)
+    })
+
+    it('应该能够降低层次', () => {
+      const elevation = useElevation(5)
+      
+      elevation.lower()
+      expect(elevation.currentLevel.value).toBe(4)
+      
+      elevation.lower(2)
+      expect(elevation.currentLevel.value).toBe(2)
+    })
+
+    it('提升层次不应超过最大值 6', () => {
+      const elevation = useElevation(5)
+      
+      elevation.raise(5)
+      expect(elevation.currentLevel.value).toBe(6)
+      expect(elevation.currentLevel.value).toBeLessThanOrEqual(6)
+    })
+
+    it('降低层次不应低于最小值 0', () => {
+      const elevation = useElevation(2)
+      
+      elevation.lower(5)
+      expect(elevation.currentLevel.value).toBe(0)
+      expect(elevation.currentLevel.value).toBeGreaterThanOrEqual(0)
+    })
   })
-  
-  test('elevation levels should create progressive depth perception', () => {
-    for (let iteration = 0; iteration < 100; iteration++) {
-      const elevationLevels: ElevationLevel[] = [0, 1, 2, 3, 4, 5, 6]
-      const elevationInstances = elevationLevels.map(level => useElevation(level))
+
+  describe('阴影样式生成', () => {
+    it('层次 0 应该没有阴影', () => {
+      const elevation = useElevation(0)
+      expect(elevation.shadow.value).toBe('none')
+    })
+
+    it('每个层次应该有对应的阴影定义', () => {
+      const levels = [0, 1, 2, 3, 4, 5, 6]
       
-      // Collect shadow classes
-      const shadows = elevationInstances.map(instance => instance.shadowClass.value)
-      
-      // Validate shadow progression
-      expect(validateShadowProgression(shadows)).toBe(true)
-      
-      // Check z-index progression
-      const zIndices = elevationInstances.map(instance => instance.zIndex.value)
-      
-      for (let i = 1; i < zIndices.length; i++) {
-        // Higher elevation should have higher z-index
-        expect(zIndices[i]).toBeGreaterThanOrEqual(zIndices[i - 1])
-      }
-      
-      // Verify specific elevation mappings
-      expect(elevationInstances[0].shadowClass.value).toBe('shadow-none')
-      expect(elevationInstances[1].shadowClass.value).toBe('shadow-xs')
-      expect(elevationInstances[6].shadowClass.value).toBe('shadow-2xl')
-    }
-  })
-  
-  test('interactive components should show elevation changes on interaction', () => {
-    for (let iteration = 0; iteration < 100; iteration++) {
-      const baseElevation: ElevationLevel = Math.floor(Math.random() * 4) as ElevationLevel
-      const hoverElevation: ElevationLevel = Math.min(6, baseElevation + 1) as ElevationLevel
-      const activeElevation: ElevationLevel = Math.max(0, baseElevation - 1) as ElevationLevel
-      
-      const { 
-        elevation, 
-        effectiveElevation, 
-        setHovered, 
-        setActive,
-        shadowClass 
-      } = useElevation(baseElevation, {
-        interactive: true,
-        hoverElevation,
-        activeElevation
+      levels.forEach(level => {
+        const elevation = useElevation(level as any)
+        expect(elevation.shadow.value).toBeTruthy()
+        expect(typeof elevation.shadow.value).toBe('string')
       })
+    })
+
+    it('更高的层次应该有更明显的阴影', () => {
+      const elevation1 = useElevation(1)
+      const elevation3 = useElevation(3)
+      const elevation5 = useElevation(5)
       
-      // Default state
-      expect(elevation.value).toBe(baseElevation)
-      expect(effectiveElevation.value).toBe(baseElevation)
+      // 阴影字符串长度通常与复杂度相关
+      expect(elevation3.shadow.value.length).toBeGreaterThan(elevation1.shadow.value.length)
+      expect(elevation5.shadow.value.length).toBeGreaterThan(elevation3.shadow.value.length)
+    })
+
+    it('应该提供 CSS 样式对象', () => {
+      const elevation = useElevation(2)
       
-      // Hover state
-      setHovered(true)
-      expect(effectiveElevation.value).toBe(hoverElevation)
+      expect(elevation.style.value).toHaveProperty('boxShadow')
+      expect(elevation.style.value.boxShadow).toBeTruthy()
+    })
+
+    it('应该提供 CSS 类名', () => {
+      const elevation = useElevation(3)
       
-      // Active state (should override hover)
-      setActive(true)
-      expect(effectiveElevation.value).toBe(activeElevation)
-      
-      // Reset states
-      setActive(false)
-      setHovered(false)
-      expect(effectiveElevation.value).toBe(baseElevation)
-      
-      // Shadow should change with elevation
-      const initialShadow = shadowClass.value
-      setHovered(true)
-      const hoverShadow = shadowClass.value
-      
-      if (hoverElevation !== baseElevation) {
-        expect(hoverShadow).not.toBe(initialShadow)
-      }
-    }
+      expect(elevation.className.value).toContain('elevation-3')
+    })
   })
-  
-  test('elevation system should use gradients and transparency for depth', () => {
-    for (let iteration = 0; iteration < 100; iteration++) {
-      const components = generateRandomElevatedComponents()
+
+  describe('交互式层次', () => {
+    it('交互式 elevation 应该在 hover 时改变层次', () => {
+      const elevation = useElevation(1, { interactive: true, hoverLevel: 2 })
       
-      components.forEach(comp => {
-        const { elevationClasses, isElevated } = useElevation(comp.baseElevation)
-        
-        // Elevated components should have appropriate classes
-        if (comp.baseElevation > 0) {
-          expect(elevationClasses.value).toContain(`elevation-${comp.baseElevation}`)
-          expect(elevationClasses.value).toContain('relative')
-        }
-        
-        // Interactive components should have interactive class
-        if (comp.interactive) {
-          const interactiveInstance = useElevation(comp.baseElevation, { interactive: true })
-          expect(interactiveInstance.elevationClasses.value).toContain('elevation-interactive')
-        }
-        
-        // Classes should be properly formatted
-        elevationClasses.value.forEach(className => {
-          expect(typeof className).toBe('string')
-          expect(className.length).toBeGreaterThan(0)
-          expect(className).not.toContain(' ') // No spaces in class names
-        })
-      })
-    }
+      expect(elevation.effectiveLevel.value).toBe(1)
+      
+      // 模拟 hover
+      elevation.listeners.onMouseenter?.({} as any)
+      expect(elevation.isHovered.value).toBe(true)
+      expect(elevation.effectiveLevel.value).toBe(2)
+      
+      // 模拟 leave
+      elevation.listeners.onMouseleave?.({} as any)
+      expect(elevation.isHovered.value).toBe(false)
+      expect(elevation.effectiveLevel.value).toBe(1)
+    })
+
+    it('交互式 elevation 应该在 active 时改变层次', () => {
+      const elevation = useElevation(2, { interactive: true, activeLevel: 1 })
+      
+      expect(elevation.effectiveLevel.value).toBe(2)
+      
+      // 模拟 mousedown
+      elevation.listeners.onMousedown?.({} as any)
+      expect(elevation.isActive.value).toBe(true)
+      expect(elevation.effectiveLevel.value).toBe(1)
+      
+      // 模拟 mouseup
+      elevation.listeners.onMouseup?.({} as any)
+      expect(elevation.isActive.value).toBe(false)
+      expect(elevation.effectiveLevel.value).toBe(2)
+    })
+
+    it('交互式 elevation 应该包含过渡效果', () => {
+      const elevation = useElevation(1, { interactive: true })
+      
+      expect(elevation.style.value.transition).toBeTruthy()
+      expect(elevation.style.value.transition).toContain('box-shadow')
+    })
+
+    it('非交互式 elevation 不应该有事件监听器', () => {
+      const elevation = useElevation(1, { interactive: false })
+      
+      expect(Object.keys(elevation.listeners).length).toBe(0)
+    })
+
+    it('交互式 elevation 应该有 elevation-interactive 类名', () => {
+      const elevation = useElevation(1, { interactive: true })
+      
+      expect(elevation.className.value).toContain('elevation-interactive')
+    })
   })
-  
-  test('elevation presets should provide appropriate depth for component types', () => {
-    for (let iteration = 0; iteration < 100; iteration++) {
-      const presetMappings = {
-        flat: { level: elevationPresets.flat, expectedDepth: 0 },
-        raised: { level: elevationPresets.raised, expectedDepth: 1 },
-        floating: { level: elevationPresets.floating, expectedDepth: 2 },
-        overlay: { level: elevationPresets.overlay, expectedDepth: 3 },
-        modal: { level: elevationPresets.modal, expectedDepth: 4 },
-        popover: { level: elevationPresets.popover, expectedDepth: 5 },
-        tooltip: { level: elevationPresets.tooltip, expectedDepth: 6 },
-      }
-      
-      Object.entries(presetMappings).forEach(([presetName, { level, expectedDepth }]) => {
-        const { elevation, isElevated, zIndex } = useElevation(level)
-        
-        // Verify preset level
-        expect(elevation.value).toBe(expectedDepth)
-        
-        // Verify elevation state
-        if (expectedDepth > 0) {
-          expect(isElevated.value).toBe(true)
-          expect(zIndex.value).toBeGreaterThan(0)
-        } else {
-          expect(isElevated.value).toBe(false)
-          expect(zIndex.value).toBe(0)
-        }
-        
-        // Higher presets should have higher z-index
-        if (expectedDepth > 0) {
-          const lowerPreset = useElevation(Math.max(0, expectedDepth - 1) as ElevationLevel)
-          expect(zIndex.value).toBeGreaterThan(lowerPreset.zIndex.value)
-        }
-      })
-    }
+
+  describe('预定义组件层次', () => {
+    it('应该定义标准组件的层次级别', () => {
+      expect(componentElevations.card).toBeDefined()
+      expect(componentElevations.button).toBeDefined()
+      expect(componentElevations.dropdown).toBeDefined()
+      expect(componentElevations.modal).toBeDefined()
+      expect(componentElevations.tooltip).toBeDefined()
+    })
+
+    it('卡片层次应该合理', () => {
+      expect(componentElevations.card).toBeGreaterThanOrEqual(0)
+      expect(componentElevations.card).toBeLessThanOrEqual(6)
+      expect(componentElevations.cardHover).toBeGreaterThan(componentElevations.card)
+    })
+
+    it('模态框应该有较高的层次', () => {
+      expect(componentElevations.modal).toBeGreaterThan(componentElevations.card)
+      expect(componentElevations.modal).toBeGreaterThan(componentElevations.dropdown)
+    })
+
+    it('工具提示应该有最高的层次', () => {
+      expect(componentElevations.tooltip).toBeGreaterThanOrEqual(componentElevations.modal)
+    })
   })
-  
-  test('elevation transitions should maintain depth perception', () => {
-    for (let iteration = 0; iteration < 100; iteration++) {
-      const startLevel: ElevationLevel = Math.floor(Math.random() * 4) as ElevationLevel
-      const endLevel: ElevationLevel = Math.floor(Math.random() * 7) as ElevationLevel
+
+  describe('辅助函数', () => {
+    it('useCardElevation 应该创建卡片层次', () => {
+      const cardElevation = useCardElevation()
       
-      const { elevation, setElevation, isTransitioning, shadowClass } = useElevation(startLevel)
+      expect(cardElevation.currentLevel.value).toBe(componentElevations.card)
+      expect(cardElevation.listeners).toBeDefined()
+    })
+
+    it('useButtonElevation 应该创建按钮层次', () => {
+      const buttonElevation = useButtonElevation()
       
-      // Initial state
-      expect(elevation.value).toBe(startLevel)
-      expect(isTransitioning.value).toBe(false)
+      expect(buttonElevation.currentLevel.value).toBe(componentElevations.button)
+      expect(buttonElevation.listeners).toBeDefined()
+    })
+
+    it('卡片 elevation 应该是交互式的', () => {
+      const cardElevation = useCardElevation()
       
-      const initialShadow = shadowClass.value
-      
-      // Transition to new elevation
-      setElevation(endLevel, true)
-      
-      // Should update elevation
-      expect(elevation.value).toBe(endLevel)
-      
-      // Shadow should change if elevation changed
-      if (startLevel !== endLevel) {
-        expect(shadowClass.value).not.toBe(initialShadow)
-      }
-      
-      // Test elevation helpers
-      const { elevate, lower, reset } = useElevation(3)
-      
-      elevate()
-      expect(elevation.value).toBe(4)
-      
-      lower()
-      expect(elevation.value).toBe(3)
-      
-      reset()
-      expect(elevation.value).toBe(0)
-    }
+      expect(Object.keys(cardElevation.listeners).length).toBeGreaterThan(0)
+      expect(cardElevation.className.value).toContain('elevation-interactive')
+    })
   })
-  
-  test('elevation system should handle edge cases gracefully', () => {
-    for (let iteration = 0; iteration < 100; iteration++) {
-      // Test boundary conditions
-      const { elevation: minElevation, lower: lowerMin } = useElevation(0)
-      lowerMin() // Should not go below 0
-      expect(minElevation.value).toBe(0)
-      
-      const { elevation: maxElevation, elevate: elevateMax } = useElevation(6)
-      elevateMax() // Should not go above 6
-      expect(maxElevation.value).toBe(6)
-      
-      // Test rapid elevation changes
-      const { setElevation: rapidSet, elevation: rapidElevation } = useElevation(0)
-      const rapidSequence: ElevationLevel[] = [1, 5, 2, 6, 0, 3]
-      
-      rapidSequence.forEach(level => {
-        rapidSet(level, false) // No animation for rapid changes
-        expect(rapidElevation.value).toBe(level)
-      })
-      
-      // Test invalid elevation values (should be handled by TypeScript, but test runtime)
-      const { setElevation: testSet, elevation: testElevation } = useElevation(0)
-      
-      // Valid elevations
-      const validLevels: ElevationLevel[] = [0, 1, 2, 3, 4, 5, 6]
-      validLevels.forEach(level => {
-        testSet(level)
-        expect(testElevation.value).toBe(level)
-      })
-    }
+
+  describe('Z-index 层次系统', () => {
+    it('应该定义完整的 z-index 层次', () => {
+      expect(zIndexLevels.base).toBeDefined()
+      expect(zIndexLevels.dropdown).toBeDefined()
+      expect(zIndexLevels.modal).toBeDefined()
+      expect(zIndexLevels.tooltip).toBeDefined()
+    })
+
+    it('z-index 应该按层次递增', () => {
+      expect(zIndexLevels.dropdown).toBeGreaterThan(zIndexLevels.base)
+      expect(zIndexLevels.modal).toBeGreaterThan(zIndexLevels.dropdown)
+      expect(zIndexLevels.tooltip).toBeGreaterThan(zIndexLevels.modal)
+    })
+
+    it('模态框背景应该在模态框内容之下', () => {
+      expect(zIndexLevels.modalBackdrop).toBeLessThan(zIndexLevels.modal)
+    })
+
+    it('通知应该有较高的 z-index', () => {
+      expect(zIndexLevels.notification).toBeGreaterThan(zIndexLevels.modal)
+    })
   })
-  
-  test('elevation context should properly nest component depths', () => {
-    for (let iteration = 0; iteration < 100; iteration++) {
-      const baseLevel: ElevationLevel = Math.floor(Math.random() * 3) as ElevationLevel
-      const childLevel: ElevationLevel = Math.floor(Math.random() * 3) as ElevationLevel
+
+  describe('视觉深度一致性', () => {
+    it('相同层次的组件应该有相同的阴影', () => {
+      const elevation1 = useElevation(2)
+      const elevation2 = useElevation(2)
       
-      // Create parent elevation
-      const parent = useElevation(baseLevel)
+      expect(elevation1.shadow.value).toBe(elevation2.shadow.value)
+    })
+
+    it('层次变化应该是渐进的', () => {
+      const levels = [1, 2, 3, 4, 5]
+      const shadows = levels.map(level => useElevation(level as any).shadow.value)
       
-      // Create child elevation (should be relative to parent)
-      const expectedChildLevel = Math.min(6, baseLevel + childLevel) as ElevationLevel
-      const child = useElevation(expectedChildLevel)
+      // 每个层次的阴影都应该不同
+      const uniqueShadows = new Set(shadows)
+      expect(uniqueShadows.size).toBe(shadows.length)
+    })
+
+    it('应该支持平滑的层次过渡', () => {
+      const elevation = useElevation(1, { interactive: true })
       
-      // Child should have higher or equal elevation
-      expect(child.elevation.value).toBeGreaterThanOrEqual(parent.elevation.value)
-      
-      // Child should have higher z-index
-      if (child.elevation.value > parent.elevation.value) {
-        expect(child.zIndex.value).toBeGreaterThan(parent.zIndex.value)
-      }
-      
-      // Verify shadow depth progression
-      const parentShadow = parent.shadowClass.value
-      const childShadow = child.shadowClass.value
-      
-      const shadowOrder = ['shadow-none', 'shadow-xs', 'shadow-sm', 'shadow-md', 'shadow-lg', 'shadow-xl', 'shadow-2xl']
-      const parentIndex = shadowOrder.indexOf(parentShadow)
-      const childIndex = shadowOrder.indexOf(childShadow)
-      
-      expect(childIndex).toBeGreaterThanOrEqual(parentIndex)
-    }
+      // 验证过渡时间合理（200ms）
+      expect(elevation.style.value.transition).toContain('200ms')
+    })
   })
 })

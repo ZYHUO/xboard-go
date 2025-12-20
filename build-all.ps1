@@ -93,6 +93,19 @@ function Build-Frontend {
         Write-Host "✓ 依赖已存在，跳过安装" -ForegroundColor Green
     }
     
+    # 运行类型检查（可选）
+    if ($env:RUN_TYPE_CHECK -eq "true") {
+        Write-Host "运行 TypeScript 类型检查..." -ForegroundColor Yellow
+        Push-Location web
+        try {
+            npm run build:check
+        }
+        catch {
+            Write-Host "警告: 类型检查失败，但继续构建" -ForegroundColor Yellow
+        }
+        Pop-Location
+    }
+    
     # 运行测试（可选）
     if ($env:RUN_TESTS -eq "true") {
         Write-Host "运行前端测试..." -ForegroundColor Yellow

@@ -1,324 +1,180 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed, type Ref } from 'vue'
 
 export type ElevationLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6
 
-export interface ElevationSystem {
-  elevation: ComputedRef<number>
-  setElevation: (level: ElevationLevel) => void
-  elevationClasses: ComputedRef<string[]>
-  shadowClass: ComputedRef<string>
-  isElevated: ComputedRef<boolean>
-  zIndex: ComputedRef<number>
-  elevate: () => void
-  lower: () => void
-  reset: () => void
-}
-
-export interface ElevationTransition {
-  from: ElevationLevel
-  to: ElevationLevel
-  duration: number
-  easing: string
-}
-
-// Elevation level mappings
-const elevationShadows: Record<ElevationLevel, string> = {
-  0: 'shadow-none',
-  1: 'shadow-xs',
-  2: 'shadow-sm',
-  3: 'shadow-md',
-  4: 'shadow-lg',
-  5: 'shadow-xl',
-  6: 'shadow-2xl',
-}
-
-const elevationZIndex: Record<ElevationLevel, number> = {
-  0: 0,
-  1: 10,
-  2: 20,
-  3: 30,
-  4: 40,
-  5: 50,
-  6: 60,
-}
-
-export function useElevation(initialLevel: ElevationLevel = 0, options?: {
+export interface ElevationConfig {
+  level: ElevationLevel
   interactive?: boolean
-  hoverElevation?: ElevationLevel
-  activeElevation?: ElevationLevel
-}) {
-  const currentElevation = ref<ElevationLevel>(initialLevel)
+  hoverLevel?: ElevationLevel
+  activeLevel?: ElevationLevel
+}
+
+// 阴影定义 - 创建视觉深度
+const elevationShadows: Record<ElevationLevel, string> = {
+  0: 'none',
+  1: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+  2: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+  3: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+  4: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+  5: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+  6: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+}
+
+// Z-index 层次定义
+export const zIndexLevels = {
+  base: 0,
+  dropdown: 1000,
+  sticky: 1020,
+  fixed: 1030,
+  modalBackdrop: 1040,
+  modal: 1050,
+  popover: 1060,
+  tooltip: 1070,
+  notification: 1080,
+}
+
+export function useElevation(initialLevel: ElevationLevel = 0, config?: Partial<ElevationConfig>) {
+  const currentLevel = ref<ElevationLevel>(initialLevel)
   const isHovered = ref(false)
   const isActive = ref(false)
-  const isTransitioning = ref(false)
   
-  const { interactive = false, hoverElevation, activeElevation } = options || {}
+  const interactive = config?.interactive ?? false
+  const hoverLevel = config?.hoverLevel ?? (initialLevel + 1 as ElevationLevel)
+  const activeLevel = config?.activeLevel ?? initialLevel
   
-  const elevation = computed(() => currentElevation.value)
-  
-  // Calculate effective elevation based on interaction state
-  const effectiveElevation = computed(() => {
-    if (!interactive) return currentElevation.value
+  // 计算当前应该显示的层次
+  const effectiveLevel = computed<ElevationLevel>(() => {
+    if (!interactive) return currentLevel.value
     
-    if (isActive.value && activeElevation !== undefined) {
-      return activeElevation
-    }
-    
-    if (isHovered.value && hoverElevation !== undefined) {
-      return hoverElevation
-    }
-    
-    return currentElevation.value
+    if (isActive.value) return activeLevel
+    if (isHovered.value) return hoverLevel
+    return currentLevel.value
   })
   
-  const setElevation = (level: ElevationLevel, animate = true) => {
-    if (animate && level !== currentElevation.value) {
-      isTransitioning.value = true
-      setTimeout(() => {
-        isTransitioning.value = false
-      }, 200)
-    }
-    currentElevation.value = level
-  }
+  // 获取当前阴影样式
+  const shadow = computed(() => elevationShadows[effectiveLevel.value])
   
-  const shadowClass = computed(() => elevationShadows[effectiveElevation.value])
+  // 获取 CSS 样式对象
+  const style = computed(() => ({
+    boxShadow: shadow.value,
+    transition: interactive ? 'box-shadow 200ms ease' : undefined,
+  }))
   
-  const elevationClasses = computed(() => {
-    const classes = [`elevation-${effectiveElevation.value}`]
-    
-    if (effectiveElevation.value > 0) {
-      classes.push(shadowClass.value)
-      classes.push('relative')
-    }
-    
-    if (interactive) {
-      classes.push('elevation-interactive')
-    }
-    
-    if (isTransitioning.value) {
-      classes.push('elevation-transitioning')
-    }
-    
-    return classes
+  // 获取 CSS 类名
+  const className = computed(() => {
+    const classes = [`elevation-${effectiveLevel.value}`]
+    if (interactive) classes.push('elevation-interactive')
+    return classes.join(' ')
   })
   
-  const isElevated = computed(() => effectiveElevation.value > 0)
-  
-  const zIndex = computed(() => elevationZIndex[effectiveElevation.value])
-  
-  // Helper methods for common elevation changes
-  const elevate = () => {
-    if (currentElevation.value < 6) {
-      currentElevation.value = (currentElevation.value + 1) as ElevationLevel
-    }
+  // 设置层次级别
+  const setLevel = (level: ElevationLevel) => {
+    currentLevel.value = level
   }
   
-  const lower = () => {
-    if (currentElevation.value > 0) {
-      currentElevation.value = (currentElevation.value - 1) as ElevationLevel
-    }
+  // 增加层次
+  const raise = (amount: number = 1) => {
+    const newLevel = Math.min(6, currentLevel.value + amount) as ElevationLevel
+    currentLevel.value = newLevel
   }
   
-  const reset = () => {
-    currentElevation.value = 0
+  // 降低层次
+  const lower = (amount: number = 1) => {
+    const newLevel = Math.max(0, currentLevel.value - amount) as ElevationLevel
+    currentLevel.value = newLevel
   }
   
-  // Interactive state management
-  const setHovered = (hovered: boolean) => {
-    isHovered.value = hovered
+  // 交互事件处理
+  const onMouseEnter = () => {
+    if (interactive) isHovered.value = true
   }
   
-  const setActive = (active: boolean) => {
-    isActive.value = active
+  const onMouseLeave = () => {
+    if (interactive) isHovered.value = false
   }
   
-  // Animation helpers
-  const animateToElevation = async (targetLevel: ElevationLevel, duration = 200) => {
-    return new Promise<void>((resolve) => {
-      isTransitioning.value = true
-      currentElevation.value = targetLevel
-      
-      setTimeout(() => {
-        isTransitioning.value = false
-        resolve()
-      }, duration)
-    })
+  const onMouseDown = () => {
+    if (interactive) isActive.value = true
   }
   
-  // Preset elevation changes
-  const floatUp = () => animateToElevation(Math.min(6, currentElevation.value + 2) as ElevationLevel)
-  const settle = () => animateToElevation(Math.max(0, currentElevation.value - 1) as ElevationLevel)
+  const onMouseUp = () => {
+    if (interactive) isActive.value = false
+  }
+  
+  // 事件监听器对象
+  const listeners = interactive ? {
+    onMouseenter: onMouseEnter,
+    onMouseleave: onMouseLeave,
+    onMousedown: onMouseDown,
+    onMouseup: onMouseUp,
+  } : {}
   
   return {
-    elevation,
-    effectiveElevation,
-    setElevation,
-    elevationClasses,
-    shadowClass,
-    isElevated,
-    zIndex,
-    elevate,
-    lower,
-    reset,
-    setHovered,
-    setActive,
-    animateToElevation,
-    floatUp,
-    settle,
-    isTransitioning: computed(() => isTransitioning.value),
+    // 状态
+    currentLevel: computed(() => currentLevel.value),
+    effectiveLevel,
     isHovered: computed(() => isHovered.value),
     isActive: computed(() => isActive.value),
+    
+    // 样式
+    shadow,
+    style,
+    className,
+    
+    // 方法
+    setLevel,
+    raise,
+    lower,
+    
+    // 事件监听器
+    listeners,
+    
+    // Z-index 辅助
+    zIndex: zIndexLevels,
   }
 }
 
-// Predefined elevation presets for common components
-export const elevationPresets = {
-  flat: 0 as ElevationLevel,
-  raised: 1 as ElevationLevel,
-  floating: 2 as ElevationLevel,
-  overlay: 3 as ElevationLevel,
-  modal: 4 as ElevationLevel,
-  popover: 5 as ElevationLevel,
-  tooltip: 6 as ElevationLevel,
+// 预定义的组件层次级别
+export const componentElevations = {
+  card: 1,
+  cardHover: 2,
+  button: 0,
+  buttonHover: 1,
+  input: 0,
+  inputFocus: 1,
+  dropdown: 3,
+  modal: 5,
+  tooltip: 6,
+  notification: 4,
 } as const
 
-// Helper function to get elevation classes without composable
-export function getElevationClasses(level: ElevationLevel): string[] {
-  const classes = [`elevation-${level}`]
-  
-  if (level > 0) {
-    classes.push(elevationShadows[level])
-    classes.push('relative')
-  }
-  
-  return classes
-}
-// Advanced elevation utilities
-export function createElevationGroup(elements: { level: ElevationLevel; interactive?: boolean }[]) {
-  const elevationInstances = elements.map(({ level, interactive }) => 
-    useElevation(level, { interactive })
-  )
-  
-  const setGroupElevation = (level: ElevationLevel) => {
-    elevationInstances.forEach(instance => instance.setElevation(level))
-  }
-  
-  const elevateGroup = () => {
-    elevationInstances.forEach(instance => instance.elevate())
-  }
-  
-  const lowerGroup = () => {
-    elevationInstances.forEach(instance => instance.lower())
-  }
-  
-  const resetGroup = () => {
-    elevationInstances.forEach(instance => instance.reset())
-  }
-  
-  return {
-    instances: elevationInstances,
-    setGroupElevation,
-    elevateGroup,
-    lowerGroup,
-    resetGroup,
-  }
-}
-
-// Elevation context for nested components
-export function useElevationContext(baseLevel: ElevationLevel = 0) {
-  const contextLevel = ref(baseLevel)
-  
-  const getChildElevation = (childLevel: ElevationLevel): ElevationLevel => {
-    const combined = contextLevel.value + childLevel
-    return Math.min(6, combined) as ElevationLevel
-  }
-  
-  const setContextLevel = (level: ElevationLevel) => {
-    contextLevel.value = level
-  }
-  
-  return {
-    contextLevel: computed(() => contextLevel.value),
-    getChildElevation,
-    setContextLevel,
-  }
-}
-
-// Elevation-aware component wrapper
-export function withElevation<T extends Record<string, any>>(
-  component: T,
-  defaultElevation: ElevationLevel = 0
+// 创建交互式层次
+export function useInteractiveElevation(
+  baseLevel: ElevationLevel = 1,
+  hoverLevel: ElevationLevel = 2,
+  activeLevel: ElevationLevel = 1
 ) {
-  return {
-    ...component,
-    props: {
-      ...component.props,
-      elevation: {
-        type: Number,
-        default: defaultElevation,
-        validator: (value: number) => value >= 0 && value <= 6 && Number.isInteger(value)
-      },
-      interactive: {
-        type: Boolean,
-        default: false
-      },
-      hoverElevation: {
-        type: Number,
-        validator: (value: number) => value >= 0 && value <= 6 && Number.isInteger(value)
-      },
-      activeElevation: {
-        type: Number,
-        validator: (value: number) => value >= 0 && value <= 6 && Number.isInteger(value)
-      }
-    }
-  }
-}
-
-// Elevation transition utilities
-export function createElevationTransition(
-  from: ElevationLevel,
-  to: ElevationLevel,
-  options?: {
-    duration?: number
-    easing?: string
-    delay?: number
-  }
-): ElevationTransition {
-  const { duration = 200, easing = 'cubic-bezier(0.4, 0, 0.2, 1)', delay = 0 } = options || {}
-  
-  return {
-    from,
-    to,
-    duration: duration + delay,
-    easing
-  }
-}
-
-// Elevation performance monitoring
-export function useElevationPerformance() {
-  const elevationChanges = ref(0)
-  const lastChangeTime = ref(0)
-  
-  const trackElevationChange = () => {
-    elevationChanges.value++
-    lastChangeTime.value = performance.now()
-  }
-  
-  const getPerformanceMetrics = () => ({
-    totalChanges: elevationChanges.value,
-    lastChange: lastChangeTime.value,
-    averageFrequency: elevationChanges.value / (performance.now() / 1000)
+  return useElevation(baseLevel, {
+    interactive: true,
+    hoverLevel,
+    activeLevel,
   })
-  
-  const resetMetrics = () => {
-    elevationChanges.value = 0
-    lastChangeTime.value = 0
-  }
-  
-  return {
-    trackElevationChange,
-    getPerformanceMetrics,
-    resetMetrics,
-    metrics: computed(() => getPerformanceMetrics())
-  }
+}
+
+// 为卡片创建层次
+export function useCardElevation() {
+  return useInteractiveElevation(
+    componentElevations.card as ElevationLevel,
+    componentElevations.cardHover as ElevationLevel,
+    componentElevations.card as ElevationLevel
+  )
+}
+
+// 为按钮创建层次
+export function useButtonElevation() {
+  return useInteractiveElevation(
+    componentElevations.button as ElevationLevel,
+    componentElevations.buttonHover as ElevationLevel,
+    componentElevations.button as ElevationLevel
+  )
 }
